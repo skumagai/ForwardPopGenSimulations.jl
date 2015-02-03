@@ -1,5 +1,14 @@
+module TestForwardPopGenSimulations
+
 using ForwardPopGenSimulations
-using Base.Test
+using FactCheck
 
 # write your own tests here
-@test 1 == 1
+testnames = [
+]
+
+for test in tests
+    Core.include("$test.jl")
+end
+
+end
