@@ -1,6 +1,11 @@
 """
-Tests for chromosomes and their associated methods.
+Tests for chromosomal storage (ChromosomalStorage{T}).
+
+This type is used internally from chromosome types as an actual storage of genes. This abstracts
+away handling of uni- and bi-parental inheritance.
 """
+
+# These function-like objects are tested elsewhere (operators.jl).
 type SureMutation <: MutationFunction end
 Base.call(x::SureMutation, i::Integer) = true
 const suremut = SureMutation()
@@ -18,28 +23,27 @@ Base.call(x::NoRecombination, i::Integer) = false
 const norec = NoRecombination()
 
 facts("""
-    There are three types of chromosomes.  All of them are subtypes of an
-    abstract type called Chromosome. The three subtypes are SegmentedChromosome,
-    ContinuousChromosome, and SegmentedContinousChromosome.
+    There are three types of chromosomal storage.  All of them are subtypes of an
+    abstract type ChromosomalStorage. The three subtypes are SegmentedStorage,
+    ContinuousStorage, and SegmentedContinousStorage.
 
-    In addition to constructors,
+    In addition to constructors, other supported operations are indexing and iteration.
     """) do
 
-    @facts issubtype(SegmentedChromosome, Chromosome)
-    @facts issubtype(ContinousChromosome, Chromosome)
-    @facts issubtype(SegmentedContinousChromosome, Chromosome)
+    @facts issubtype(SegmentedStorage, ChromosomalStorage)
+    @facts issubtype(ContinousStorage, ChromosomalStorage)
+    @facts issubtype(SegmentedContinousStore, ChromosomalStorage)
 end
 
 facts("""
-    The first subtype of Chromosome is SegmentedChromosome. A object of this
-    type consists of a limited number of loci. A locus then stores a subtype
-    of Gene. A SegmentedChromosome permits only inter-locus recombination,
-    so it is suitable for simulating relatively short segment of chromosome
-    intersparsed by much longer intervals.
+    The first subtype is SegmentedStorage. A object of this type holds a limited number
+    of loci. A locus then stores a subtype of Gene. A SegmentedStorage permits only
+    inter-locus recombination, so it is suitable for simulating relatively short segment
+    of chromosome intersparsed by much longer intervals.
     """) do
 
     contexts("""
-        At the beginning of a simulation, chromosomes are initialized with
+        At the beginning of a simulation, storage is initialized with
         desired number of loci.
         """) do
 
@@ -67,8 +71,6 @@ facts("""
             chr2 = SegmentedChromosome([BaseGene(3, 3), BaseGene(4, 4)])
             newchr = chromosome(chr1, chr2, norec)
             @fact newchar => anyof(chr1, chr2)
-
-        end
     end
 end
 
@@ -83,3 +85,4 @@ facts("""
     to talk about the length of a chromosome.
     """) do
 
+end
