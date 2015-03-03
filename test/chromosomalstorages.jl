@@ -57,7 +57,10 @@ facts("ChromosomalStorage with dense backends implements these operations.") do
         @fact o[1] => not(chr[1])
     end
 
-    context("It can be created from a pair of chromosomes and a list of recombination sites.") do
+    context("""
+    It can be created from a pair of chromosomes and a list of recombination sites. By
+    convension, a offspring's chromosome begins with the first parental chromosome.
+    """) do
         recsites = [3, 6, 9]
         par1 = ChromosomalStorage{Vector, Int}(nelems)
         par2 = ChromosomalStorage{Vector, Int}(nelems)
@@ -65,12 +68,14 @@ facts("ChromosomalStorage with dense backends implements these operations.") do
             par1[i] = i
             par2[i] = i + nelems
         end
-        o = offspring(par1, par2, recsites)
-
         e1 = [1, 2, 3, 14, 15, 16, 7, 8, 9, 20]
         e2 = [11, 12, 13, 4, 5, 6, 17, 18, 19, 10]
-        results = [o[i] for i = 1:nelems]
-        @fact results => anyof(e1, e2)
+
+        for (pars, ex) in zip(((par1, par2), (par2, par1)), (ex1, ex2))
+            o = offspring(pars[1], pars[2], recsites)
+            val = [o[i] for i = 1:nelems]
+            @fact val => ex
+        end
     end
 
 end
@@ -138,7 +143,10 @@ have data associated with it, the type of returned values is nullable.
         @fact get(o[2]) => get(chr[2])
     end
 
-    context("It can be created from a pair of chromosomes and a list of recombination sites.") do
+    context("""
+    It can be created from a pair of chromosomes and a list of recombination sites. By
+    convension, offspring's chromosome begins with the first parental chromosome.
+    """) do
         recsites = [3, 6, 9]
         par1 = ChromosomalStorage{Vector, Int}(nelems)
         par2 = ChromosomalStorage{Vector, Int}(nelems)
@@ -149,15 +157,17 @@ have data associated with it, the type of returned values is nullable.
                 par2[i] = i + nelems
             end
         end
-        o = offspring(par1, par2, recsites)
-
         e1 = [2, 15, 8, 9]
         e2 = [11, 13, 4, 6, 17, 19, 10]
-        val = Vector{Int}(0)
-        for 1 = 1:nelems
-            isnull(o[i]) || push!(val, get(o[i]))
+
+        for (pars, ex) in zip(((par1, par2), (par2, par1)), (e1, e2))
+            o = offspring(pars[1], pars[2], recsites)
+            val = Vector{Int}(0)
+            for i = 1:nelems
+                isnull(o[i]) || push!(val, get(o[i]))
+            end
+            @fact vals => ex
         end
-        @fact vals => anyof(e1, e2)
     end
 
 end
@@ -209,9 +219,11 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
         @fact chr(1.0) => isnull
     end
 
-    context("It can be created from a pair of chromosomes and a list of recombination sites.") do
+    context("""
+    It can be created from a pair of chromosomes and a list of recombination sites. By
+    convension, offspring's chromosome begins with the first parental chromosome.
+    """) do
         recsites = [0.49, 1.01]
-        sites = [1/3, 2/3, 6/5, 7/5]
         sites2 = [1/4, 2/4, 3/4, 5/4]
         par1 = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
         par2 = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
@@ -221,16 +233,17 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
         for i = 1:sites2
             par2[i] = i
         end
-        o = offspring(par1, par2, recsites)
-
         e1 = [1/3, 2/4, 3/4, 6/5, 7/5]
         e2 = [1/4, 2/3, 5/4]
-        val = Vector{Float64}(0)
-        for i in o
-            @fact i => not(isnull)
-            push!(val, get(i))
+
+        for (pars, ex) in zip(((par1, par2), (par2, par1)), (e1, e2))
+            o = offspring(pars[1], pars[2], recsites)
+            val = Vector{Float64}(0)
+            for i in o
+                isnull(i) || push!(val, get(i))
+            end
+            @fact val => ex
         end
-        @fact val => anyof(e1, e2)
     end
 
 end
