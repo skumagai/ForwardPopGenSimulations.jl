@@ -1,5 +1,5 @@
 """
-Test for actual storage of genetic materials.
+Testing storage of genetic materials.
 
 ChromosomalStorage provides linearly arranged (vector) storage for genetic information.
 Such information can be either dense or sparse, and the type of the information can be
@@ -18,22 +18,26 @@ supported by Dict{R<:Real,T}.
 
 facts("ChromosomalStorage with dense backends implements these operations.") do
     nelems = 10
+    chr = ChromosomalStorage{Vector, Int}(nelems)
+    for i = 1:nelems
+        chr[i] = i
+    end
 
     context("It can be indexed into.") do
-        chr = ChromosomalStorage{Vector, Int}(nelems)
         for i = 1:nelems
-            chr[i] = i
             @fact chr[i] => i
         end
     end
 
-    context("It can be iterated over all sites.") do
-        chr = ChromosomalStorage{Vector, Int}(nelems)
-        for i = 1:nelems
-            chr[i] = i
-        end
+    context("It can be iterated over all genetic information.") do
         for (i, site) in enumerate(chr)
             @fact site => i
+        end
+    end
+
+    context("It can be iterated over all positions.") do
+        for (i, pos) in enumerate(iterposition(chr))
+            @fact pos => i
         end
     end
 
@@ -45,10 +49,6 @@ facts("ChromosomalStorage with dense backends implements these operations.") do
     end
 
     context("It can be created from a parental chromosome.") do
-        chr = ChromosomalStorage{Vector, Int}(nelems)
-        for i = 1:nelems
-            chr[i] = i
-        end
         o = offspring(chr)
         for i = 1:nelems
             @fact o[i] => i
@@ -87,28 +87,33 @@ have data associated with it, the type of returned values is nullable.
     nelems = 10
     sites = [2:2:10]
 
+    chr = ChromosomalStorage{SparseMatrixCSC, Int}(nelems)
+    for i = 1:sites
+        chr[i] = i
+    end
+
     context("It can be indexed into.") do
         chr = ChromosomalStorage{SparseMatrixCSC, Int}(nelems)
-        for i = 1:sites
+        for i = 1:nelems
             if i in sites
-                chr[i] = i
                 @fact chr[i] => not(isnull)
                 @fact get(chr[i]) => i
             else
-                chr[i] = i
                 @fact chr[i] => isnull
             end
         end
     end
 
-    context("It can be iterated over all sites.") do
-        chr = ChromosomalStorage{SparseMatrixCSC, Int}(nelems)
-        for i =
-            chr[i] = i
-        end
+    context("It can be iterated over all explicitly stored genetic information.") do
         for (i, site) in enumerate(chr)
             @fact site => not(isnull)
             @fact get(site) => i
+        end
+    end
+
+    context("It can be iterated over all positions with explicit genetic information.") do
+        for (i, pos) in enumerate(iterposition(chr))
+            @fact pos => i
         end
     end
 
@@ -120,10 +125,6 @@ have data associated with it, the type of returned values is nullable.
     end
 
     context("It can be created from a parental chromosome.") do
-        chr = ChromosomalStorage{SparseMatrixCSC, Int}(nelems)
-        for i = 1:sites
-            chr[i] = i
-        end
         o = offspring(chr)
         for i = 1:nelems
             if i in sites
@@ -176,38 +177,39 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
     len = 1.5
     sites = [1/3, 2/3, 6/5, 7/5]
 
+    chr = ChromosomalStorage{SortedDict, Float64, Float64}(len)
+    for i = 1:sites
+        chr[i] = i
+    end
+
     context("It can be indexed into.") do
-        chr = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
         for i = 1:sites
-            chr[i] = i
             @fact chr[i] => not(isnull)
             @fact get(chr[i]) => i
         end
     end
 
-    context("It can be iterated over all sites.") do
-        chr = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
-        for i = 1:sites
-            chr[i] = i
-        end
+    context("It can be iterated over all explicitly stored genetic information.") do
         for (i, site) in enumerate(chr)
             @fact site => not(isnull)
             @fact get(site) => sites[i]
         end
     end
 
+    context("It can be iterated over all positions of explicitly stored genetic information.") do
+        for (i, pos) in enumerate(iterposition(chr))
+            @fact pos => i
+        end
+    end
+
     context("It can be queried about the length.") do
         for i = 2:2:10
-            chr = ChromosomalStorage{SortedDict{Float64}, Float64}(i * len)
+            chr = ChromosomalStorage{SortedDict, Float64, Float64}(i * len)
             @fact length(chr) => i * len
         end
     end
 
     context("It can be created from a parental chromosome.") do
-        chr = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
-        for i = 1:sites
-            chr[i] = i
-        end
         o = offspring(chr)
         for i = 1:sites
             @fact o[i] => not(isnull)
@@ -225,8 +227,8 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
     """) do
         recsites = [0.49, 1.01]
         sites2 = [1/4, 2/4, 3/4, 5/4]
-        par1 = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
-        par2 = ChromosomalStorage{SortedDict{Float64}, Float64}(len)
+        par1 = ChromosomalStorage{SortedDict, Float64, Float64}(len)
+        par2 = ChromosomalStorage{SortedDict, Float64, Float64}(len)
         for i = 1:sites
             par1[i] = i
         end
@@ -245,5 +247,13 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
             @fact val => ex
         end
     end
-
 end
+
+facts("For simplicity, several typealias are defined.") do
+    immutable DummyGene end
+    immutable DummyKey end
+    DenseChromosome{DummyGene} == ChromosomalStorage{Vector, DummyGene}
+    SparseChromosome{DummyGene} == ChromosomalStorage{SparseMatrixCSC, DummyGene}
+    IntervalChromosome{DummyGene, DummyKey} == ChromosomalStorage{SortedDict, DummyGene, DummyKey}
+end
+

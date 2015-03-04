@@ -1,22 +1,30 @@
 """
-Test for various types of chromosomes.
+Testing transmission of various types of chromosomes under diploidy.
 
-These types handles sex specific transmission of genetic materials.  The currently
-implemented are Autosome, XChromosome, YChromosome, and Mitochondrion. Polyploidy
-with n > 2 is not supported yet.
+Under diploidy, there are several kinds of chromosomes such as autosome and sex-chormosomes.
+This file currently provides unit tests for Autosome, XChromosome, YChromosome, and
+Mitochondrion. The main purpose of types tested here is to handle sex-specific transmission
+of genetic materials including recombination. Actual storage of genertic data is delegated
+to ChromosomalStorage type.
 
-Actual storage of genertic data is delegated to ChromosomalStorage type.
-
-In order to make holding organisms in a population simpler, chromosomes are not
-parametrized by sex. This incurs unused ChromosomalChromosomes in sex chromosomes and
-chromosomes.
+In order to make holding organisms in a population simpler, chromosomes are not parametrized
+by sex. This design incurs wasted storage space in sex-chromosomes and organelle's chromosomes.
 """
 
+facts("Autosome are non sex-specific.") do
+    nelems = 10
+    mother = Autosome{ChromosomalStorage{Int}}(nelems)
+    father = Autosome{ChromosomalStorage{Int}}(nelems)
+
+end
+
 facts("""
-    All organisms have two autosomes, and the pattern of transmissioin does not depend on
-    sex.
-    """) do
+All organisms have two autosomes, and the pattern of transmissioin does not depend on sex.
+""") do
+    nelems = 10
+
     context("A new chromosome can be initialized without parental chromosomes.") do
+        Autosome(chr1, chr2)
 
     end
     context("A new chromosome can be created with one maternal and one paternal chromosomes.") do
