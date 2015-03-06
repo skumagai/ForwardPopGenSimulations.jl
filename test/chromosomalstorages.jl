@@ -18,7 +18,7 @@ supported by Dict{R<:Real,T}.
 
 facts("ChromosomalStorage with dense backends implements these operations.") do
     nelems = 10
-    chr = ChromosomalStorage{Vector, Int}(nelems)
+    chr = ChromosomalStorage{Vector{Int}}(nelems)
     for i = 1:nelems
         chr[i] = i
     end
@@ -35,15 +35,15 @@ facts("ChromosomalStorage with dense backends implements these operations.") do
         end
     end
 
-    context("It can be iterated over all positions.") do
-        for (i, pos) in enumerate(iterposition(chr))
+    context("It can be iterated over all non-empty positions.") do
+        for (i, pos) in enumeratenz(chr)
             @fact pos => i
         end
     end
 
     context("It can be queried about the length.") do
         for i = 2:2:10
-            chr = ChromosomalStorage{Vector, Int}(i)
+            chr = ChromosomalStorage{Vector{Int}}(i)
             @fact length(chr) => i
         end
     end
@@ -112,7 +112,7 @@ have data associated with it, the type of returned values is nullable.
     end
 
     context("It can be iterated over all positions with explicit genetic information.") do
-        for (i, pos) in enumerate(iterposition(chr))
+        for (i, pos) in enumeratenz(chr)
             @fact pos => i
         end
     end
@@ -149,8 +149,8 @@ have data associated with it, the type of returned values is nullable.
     convension, offspring's chromosome begins with the first parental chromosome.
     """) do
         recsites = [3, 6, 9]
-        par1 = ChromosomalStorage{Vector, Int}(nelems)
-        par2 = ChromosomalStorage{Vector, Int}(nelems)
+        par1 = ChromosomalStorage{Vector{Int}}(nelems)
+        par2 = ChromosomalStorage{Vector{Int}}(nelems)
         for i = 1:nelems
             if i in sites
                 par1[i] = i
@@ -177,7 +177,7 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
     len = 1.5
     sites = [1/3, 2/3, 6/5, 7/5]
 
-    chr = ChromosomalStorage{SortedDict, Float64, Float64}(len)
+    chr = ChromosomalStorage{SortedDict{Float64, Float64}}(len)
     for i = 1:sites
         chr[i] = i
     end
@@ -197,14 +197,14 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
     end
 
     context("It can be iterated over all positions of explicitly stored genetic information.") do
-        for (i, pos) in enumerate(iterposition(chr))
+        for (i, pos) in enumeratenz(chr)
             @fact pos => i
         end
     end
 
     context("It can be queried about the length.") do
         for i = 2:2:10
-            chr = ChromosomalStorage{SortedDict, Float64, Float64}(i * len)
+            chr = ChromosomalStorage{SortedDict{Float64, Float64}}(i * len)
             @fact length(chr) => i * len
         end
     end
@@ -227,8 +227,8 @@ facts("ChromosomalStorage with dictionary backends implements these operations."
     """) do
         recsites = [0.49, 1.01]
         sites2 = [1/4, 2/4, 3/4, 5/4]
-        par1 = ChromosomalStorage{SortedDict, Float64, Float64}(len)
-        par2 = ChromosomalStorage{SortedDict, Float64, Float64}(len)
+        par1 = ChromosomalStorage{SortedDict{Float64, Float64}}(len)
+        par2 = ChromosomalStorage{SortedDict{Float64, Float64}}(len)
         for i = 1:sites
             par1[i] = i
         end
@@ -252,8 +252,8 @@ end
 facts("For simplicity, several typealias are defined.") do
     immutable DummyGene end
     immutable DummyKey end
-    DenseChromosome{DummyGene} == ChromosomalStorage{Vector, DummyGene}
-    SparseChromosome{DummyGene} == ChromosomalStorage{SparseMatrixCSC, DummyGene}
-    IntervalChromosome{DummyGene, DummyKey} == ChromosomalStorage{SortedDict, DummyGene, DummyKey}
+    DenseChromosome{Gene} == ChromosomalStorage{Vector{Gene}}
+    SparseChromosome{Gene} == ChromosomalStorage{SparseMatrixCSC{Int64, Gene}}
+    IntervalChromosome{Gene, Key} == ChromosomalStorage{SortedDict{Key, Gene}}
 end
 
