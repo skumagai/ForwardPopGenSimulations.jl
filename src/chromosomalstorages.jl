@@ -1,56 +1,56 @@
-import Base: getindex, setindex!, enumerate, start, next, done
+import Base: getindex, setindex!, enumerate, start, next, done, call
 
-type ChromosomalStorage{T<:Union(AbstractVector, Associative)}
-    data::T
-    length::Int
+abstract Chromosome{Gene}
+
+type DenseChromosome{Gene} <: Chromosome{Gene}
+    data::Vector{Gene}
 end
+call{T}(::Type{DenseChromosome{T}}, len::Integer) = DenseChromosome{T}(Vector{T}(len))
 
-ChromosomalStorage{T<:DenseVector}(::Type{T}, len::Integer) = ChromosomalStorage{T}(T(len), len)
-ChromosomalStorage{T<:AbstractSparseVector}(::Type{T}, len::Integer) = ChromosomalStorage{T}(
+# type SparseChromosome{Gene} <: Chromosome{Gene}
+#     data::SparseVector{Gene}
+# end
+# call{T}(::Type{SparseChromosome{T}}, len::Integer) = SparseChromosome{T}(SparseVector{T}(len))
 
-getindex(chr::ChromosomalStorage, i::Integer) = data[i]
-setindex!{Gene}(chr::ChromosomalStorage, g::Gene, i::Integer) = data[i] = g
-
-enumerate(chr::ChromosomalStorage) = enumerate(chr.data)
-
-enumeratenz(chr::ChromosomalStorage{DenseVector}) = enumerate(chr)
-enumeratenz(chr::ChromosomalStorage{AbstractSparseVector}) = zip(chr.data.rowval, chr.data.nzval)
-enumeratenz(chr::ChromosomalStorage{Associative}) = chr
-
-length(chr::ChromosomalStorage) = chr.length
-
-function deletedata!(c::ChromosomalStorage{AbstractSparseArray})
-    # delete old data
-    for i in findnz(d.data)[1]
-        d.data[i] = 0
-    end
+type IntervalChromosome{Gene, Tk<:Real} <: Chromosome{Gene}
+    data::Dict{Tk, Gene}
+    n::Int
 end
+call{T, Tk<:Real}(::Type{IntervalChromosome{T, TK}}, len::Integer) =
+    IntervalChromosome{T,Tk}(Dict{Tk,T}())
 
-function deletedata!(c::ChromosomalStorage{Associative})
-    # delete old data
-    for i in keys(d.data)
-        delete!(d.data, i)
-    end
-end
+getindex(chr::Chromosome, i::Integer) = chr.data[i]
+setindex!{Gene}(chr::Chromosome{Gene}, g::Gene, i::Integer) = chr.data[i] = g
 
-function writedata!{C<:ChromosomalStorage}(d::C, p::C)
+enumerate(chr::Chromosome) = enumerate(chr.data)
+
+enumeratenz(chr::DenseChromosome) = enumerate(chr)
+# enumeratenz(chr::SparseChromosome) = zip(chr.data.rowval, chr.data.nzval)
+enumeratenz(chr::IntervalChromosome) = chr.data
+
+length(chr::Chromosome) = length(chr)
+length(chr::IntervalChromosome) = chr.n
+
+function _writedata!{C<:Chromosome}(d::C, p::C)
     # write new data
-    for (i, j) in enumerate(p)
+    for (i, j) in enumeratenz(p)
         d.data[i] = j
     end
-    d.length = p.length
 end
 
-daughter!{C<:ChromosomalStorage{DenseArray}}(d::C, p::C) = writedata!(d, p)
+writedata!{C<:Chromosome}(d::C, p::C) = _writedata(d, p)
 
-function daughter!{C<:ChromosomalStorage}(d:C, p::C)
-    deletedata!(d)
+function writedata!{C<:IntervalChromosome}(d::C, p::C)
+    _writedata!(d, p)
+    d.n = p.n
+end
+
+function daughter!{C<:Chromosome}(d:C, p::C)
+    empty!(d.data)
     writedata!(d, p)
 end
 
-function daughter{C<:ChromosomalStorage, I<:Integer}(p1::C, p2::C, Vector{I})
-    ps = (p1, p2)
-    c = 1
-
+function daughter!{C<:Chromosome, I<:Integer}(d::C, ps::(C, C), recs::Vector{I})
+    empty!(d.data)
 end
 
