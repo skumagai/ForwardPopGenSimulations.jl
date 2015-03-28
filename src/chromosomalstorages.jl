@@ -1,4 +1,7 @@
 import Base: getindex, setindex!, enumerate, start, next, done, call
+import DataStructures: SortedDict
+
+export Chromosome, DenseChromosome, IntervalChromosome
 
 abstract Chromosome{Gene}
 
@@ -7,33 +10,24 @@ type DenseChromosome{Gene} <: Chromosome{Gene}
 end
 call{T}(::Type{DenseChromosome{T}}, len::Integer) = DenseChromosome{T}(Vector{T}(len))
 
-# type SparseChromosome{Gene} <: Chromosome{Gene}
-#     data::SparseVector{Gene}
-# end
-# call{T}(::Type{SparseChromosome{T}}, len::Integer) = SparseChromosome{T}(SparseVector{T}(len))
-
 type IntervalChromosome{Gene, Tk<:Real} <: Chromosome{Gene}
-    data::Dict{Tk, Gene}
+    data::SortedDict{Tk, Gene}
     n::Int
 end
 call{T, Tk<:Real}(::Type{IntervalChromosome{T, TK}}, len::Integer) =
-    IntervalChromosome{T,Tk}(Dict{Tk,T}())
+    IntervalChromosome{T,Tk}(SortedDict{Tk,T}())
 
 getindex(chr::Chromosome, i::Integer) = chr.data[i]
 setindex!{Gene}(chr::Chromosome{Gene}, g::Gene, i::Integer) = chr.data[i] = g
 
 enumerate(chr::Chromosome) = enumerate(chr.data)
 
-enumeratenz(chr::DenseChromosome) = enumerate(chr)
-# enumeratenz(chr::SparseChromosome) = zip(chr.data.rowval, chr.data.nzval)
-enumeratenz(chr::IntervalChromosome) = chr.data
-
 length(chr::Chromosome) = length(chr)
 length(chr::IntervalChromosome) = chr.n
 
 function _writedata!{C<:Chromosome}(d::C, p::C)
     # write new data
-    for (i, j) in enumeratenz(p)
+    for (i, j) in enumerate(p)
         d.data[i] = j
     end
 end
