@@ -14,7 +14,7 @@ type IntervalChromosome{Gene, Tk<:Real} <: Chromosome{Gene}
     data::SortedDict{Tk, Gene}
     n::Int
 end
-call{T, Tk<:Real}(::Type{IntervalChromosome{T, TK}}, len::Integer) =
+call{T, Tk<:Real}(::Type{IntervalChromosome{T, Tk}}, len::Integer) =
     IntervalChromosome{T,Tk}(SortedDict{Tk,T}())
 
 getindex(chr::Chromosome, i::Integer) = chr.data[i]
@@ -39,7 +39,7 @@ function writedata!{C<:IntervalChromosome}(d::C, p::C)
     d.n = p.n
 end
 
-function daughter!{C<:Chromosome}(d:C, p::C)
+function daughter!{C<:Chromosome}(d::C, p::C)
     empty!(d.data)
     writedata!(d, p)
 end
