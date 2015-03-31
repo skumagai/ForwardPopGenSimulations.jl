@@ -1,5 +1,5 @@
-import Base: getindex, setindex!, enumerate, start, next, done, call, length
-import DataStructures: SortedDict
+import Base: getindex, setindex!, enumerate, call, length
+import DataStructures: SortedDict, pastendtoken, deref, deref_value, startof, advance
 
 export Chromosome, DenseChromosome, IntervalChromosome, setoffspring!
 
@@ -12,15 +12,26 @@ call{T}(::Type{DenseChromosome{T}}, len::Integer) = DenseChromosome{T}(Vector{T}
 
 type IntervalChromosome{Gene, Tk<:Real} <: Chromosome{Gene}
     data::SortedDict{Tk, Gene}
-    n::Int
+    n::Tk
 end
-call{T, Tk<:Real}(::Type{IntervalChromosome{T, Tk}}, len::Integer) =
-    IntervalChromosome{T,Tk}(SortedDict{Tk,T}())
+call{T, Tk<:Real}(::Type{IntervalChromosome{T, Tk}}, len::Tk) =
+    IntervalChromosome{T,Tk}(SortedDict(Dict{Tk,T}()), len)
 
-getindex(chr::Chromosome, i::Integer) = chr.data[i]
-setindex!{Gene}(chr::Chromosome{Gene}, g::Gene, i::Integer) = chr.data[i] = g
+getindex(chr::DenseChromosome, i::Integer) = chr.data[i]
+function getindex(chr::IntervalChromosome, i::Real)
+    val = find(chr.data, i)
+    if val == pastendtoken(chr.data)
+        Nullable{typeof(i)}()
+    else
+        Nullable(deref_value(val))
+    end
+end
+setindex!{Gene}(chr::DenseChromosome{Gene}, g::Gene, i::Integer) = chr.data[i] = g
+setindex!{Gene}(chr::IntervalChromosome{Gene}, g::Gene, i::Real) = chr.data[i] = g
 
-enumerate(chr::Chromosome) = enumerate(chr.data)
+enumerate(chr::DenseChromosome) = enumerate(chr.data)
+
+enumerate(chr::IntervalChromosome) = chr.data
 
 length(chr::DenseChromosome) = length(chr.data)
 length(chr::IntervalChromosome) = chr.n
@@ -42,7 +53,7 @@ end
 
 setoffspring!{C<:Chromosome}(d::C, p::C) = writedata!(d, p)
 
-function setoffspring!{C<:Chromosome, I<:Integer}(d::C, ps::(C, C), recs::Vector{I})
+function setoffspring!{C<:DenseChromosome, I<:Integer}(d::C, ps::(C, C), recs::Vector{I})
     i0 = 1
     selected = 1
     for recblock = 1:length(recs)
@@ -57,3 +68,32 @@ function setoffspring!{C<:Chromosome, I<:Integer}(d::C, ps::(C, C), recs::Vector
     end
 end
 
+function setoffspring!{C<:IntervalChromosome, I<:Real}(d::C, ps::(C, C), recs::Vector{I})
+    empty!(d.data)
+    selected = 1
+    # Assuming position is always positive.
+    pos0 = -1.0
+    iends = (pastendtoken(ps[1].data), pastendtoken(ps[2].data))
+    is = [startof(ps[1].data), startof(ps[2].data)]
+    for recsite in [recs; length(ps[1])]
+        i = is[selected]
+        while i != iends[selected]
+            pos, val = deref(i)
+            if pos > recsite
+                # If the current position is past the next recombination site, switch to another parantal chromosome.
+
+                # Cache the current state
+                is[selected] = i
+                selected = 3 - selected
+                i = is[selected]
+                pos0 = recsite
+                break
+            elseif pos <= pos0
+                i = advance(i)
+            else
+                d.data[pos] = val
+                i = advance(i)
+            end
+        end
+    end
+end
