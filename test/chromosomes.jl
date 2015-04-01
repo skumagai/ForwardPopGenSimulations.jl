@@ -16,7 +16,7 @@ integer indexing. The last backends is sparse and allows floating point position
 supported by Dict{R<:Real,T}.
 """
 
-import ForwardPopGenSimulations: Chromosome, DenseChromosome, IntervalChromosome
+using ForwardPopGenSimulations
 
 facts("Chromosomal has two (parameterized) subtypes.") do
     @fact DenseChromosome <: Chromosome => true
