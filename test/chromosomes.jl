@@ -40,6 +40,7 @@ facts("DenseChromosome implements these operations.") do
         for i = 1:nelems
             @fact chr[i] => i
         end
+        @fact_throws BoundsError chr[nelems+1]
     end
 
     context("It can be iterated over all genetic information.") do
@@ -101,6 +102,7 @@ facts("IntervalChromosome backends implements these operations.") do
             @fact chr[i] => not(isnull)
             @fact get(chr[i]) => i
         end
+        @fact_throws BoundsError chr[len+1.0]
     end
 
     context("It can be iterated over all explicitly stored genetic information.") do

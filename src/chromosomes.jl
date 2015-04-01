@@ -19,6 +19,7 @@ call{T, Tk<:Real}(::Type{IntervalChromosome{T, Tk}}, len::Tk) =
 
 getindex(chr::DenseChromosome, i::Integer) = chr.data[i]
 function getindex(chr::IntervalChromosome, i::Real)
+    (i < 0 || chr.n < i) && throw(BoundsError("Outside of a valid chromosomal range."))
     val = find(chr.data, i)
     if val == pastendtoken(chr.data)
         Nullable{typeof(i)}()
