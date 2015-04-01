@@ -2,5 +2,5 @@ module ForwardPopGenSimulations
 
 # package code goes here
 
-include("chromosomalstorages.jl")
+include("chromosomes.jl")
 end # module

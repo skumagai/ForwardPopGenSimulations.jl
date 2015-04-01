@@ -5,7 +5,7 @@ using FactCheck
 
 # write your own tests here
 testnames = [
-    "chromosomalstorages"
+    "chromosomes"
 ]
 
 for test in testnames
