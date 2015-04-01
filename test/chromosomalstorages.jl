@@ -66,10 +66,7 @@ facts("DenseChromosome implements these operations.") do
         @fact o[1] => not(chr[1])
     end
 
-    context("""
-    It can be created from a pair of chromosomes and a list of recombination sites. By
-    convension, a offspring's chromosome begins with the first parental chromosome.
-    """) do
+    context("It can be created from a pair of chromosomes and a list of recombination sites.") do
         recsites = [3, 6, 9]
         par1 = DenseChromosome{Int}(nelems)
         par2 = DenseChromosome{Int}(nelems)
@@ -82,7 +79,7 @@ facts("DenseChromosome implements these operations.") do
 
         for (pars, ex) in zip(((par1, par2), (par2, par1)), (ex1, ex2))
             o = DenseChromosome{Int}(nelems)
-            setoffspring!(o, pars, recsites)
+            setoffspring!(o, pars, 1, recsites)
             vals = [o[i] for i = 1:nelems]
             @fact vals => ex
         end
@@ -132,10 +129,7 @@ facts("IntervalChromosome backends implements these operations.") do
         @fact chr[1.0] => isnull
     end
 
-    context("""
-    It can be created from a pair of chromosomes and a list of recombination sites. By
-    convension, offspring's chromosome begins with the first parental chromosome.
-    """) do
+    context("It can be created from a pair of chromosomes and a list of recombination sites.") do
         recsites = [0.49, 1.01]
         # sites = [1/3, 2/3, 6/5, 7/5]
         sites2 = [1/4, 2/4, 3/4, 5/4]
@@ -152,7 +146,7 @@ facts("IntervalChromosome backends implements these operations.") do
 
         for (pars, ex) in zip(((par1, par2), (par2, par1)), (ex1, ex2))
             o = IntervalChromosome{Float64, Float64}(len)
-            setoffspring!(o, pars, recsites)
+            setoffspring!(o, pars, 1, recsites)
             vals = Vector{Float64}(0)
             for (pos, val) in enumerate(o)
                 @fact pos => val

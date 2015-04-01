@@ -1,7 +1,7 @@
 import Base: getindex, setindex!, enumerate, call, length
 import DataStructures: SortedDict, pastendtoken, deref, deref_value, startof, advance
 
-export Chromosome, DenseChromosome, IntervalChromosome, setoffspring!
+export Chromosome, DenseChromosome, IntervalChromosome, setoffspring!, inherit
 
 abstract Chromosome{Gene}
 
@@ -53,24 +53,22 @@ end
 
 setoffspring!{C<:Chromosome}(d::C, p::C) = writedata!(d, p)
 
-function setoffspring!{C<:DenseChromosome, I<:Integer}(d::C, ps::(C, C), recs::Vector{I})
+function setoffspring!{C<:DenseChromosome, I<:Integer}(d::C, ps::(C, C), selected::Int, recs::Vector{I})
     i0 = 1
-    selected = 1
     for recblock = 1:length(recs)
         for i = i0:recs[recblock]
-            d.data[i] = ps[selected].data[i]
+            d.data[i] = inherit(ps[selected].data[i])
         end
         selected = 3 - selected
         i0 = recs[recblock] + 1
     end
     for i = i0:length(d)
-        d.data[i] = ps[selected].data[i]
+        d.data[i] = inherit(ps[selected].data[i])
     end
 end
 
-function setoffspring!{C<:IntervalChromosome, I<:Real}(d::C, ps::(C, C), recs::Vector{I})
+function setoffspring!{C<:IntervalChromosome, I<:Real}(d::C, ps::(C, C), selected::Int, recs::Vector{I})
     empty!(d.data)
-    selected = 1
     # Assuming position is always positive.
     pos0 = -1.0
     iends = (pastendtoken(ps[1].data), pastendtoken(ps[2].data))
@@ -91,9 +89,11 @@ function setoffspring!{C<:IntervalChromosome, I<:Real}(d::C, ps::(C, C), recs::V
             elseif pos <= pos0
                 i = advance(i)
             else
-                d.data[pos] = val
+                d.data[pos] = inherit(val)
                 i = advance(i)
             end
         end
     end
 end
+
+inherit(i::Number) = i
