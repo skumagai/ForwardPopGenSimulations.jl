@@ -220,4 +220,94 @@ function simulate(params::ModelParameters, burnin::Int, t::Int)
     pops[:, 1], ldb
 end
 
+toarray(pop::Vector{Organism}, field::Symbol) = [getfield(org.genes[locus, chr], field) for org in pop, locus = 1:length(pop[1]), chr = 1:2]
+
+function counts(pop::Vector{Organism})
+    alleles = toarray(pop, :state)
+    # allele count
+    adata = [Dict{Int, Int}() for _ = 1:length(pop[1])]
+    # genotype count
+    gdata = [Dict{NTuple{2, Int}, Int}() for _ = 1:length(pop[1])]
+    # haplotype count
+    hdata = Dict{NTuple{length(pop[1]), Int}, Int}()
+    for org in 1:length(pop)
+        for locus = 1:length(pop[1])
+            g = tuple(sort(vec(alleles[org, locus, :]))...)
+            gdata[locus][g] = get(gdata[locus], g, 0) + 1
+            for chr = 1:2
+                a = alleles[org, locus, chr]
+                adata[locus][a] = get(adata[locus], a, 0) + 1
+            end
+        end
+        for chr = 1:2
+            h = tuple(vec(alleles[org, :, chr])...)
+            hdata[h] = get(hdata, h, 0) + 1
+        end
+    end
+    adata, gdata, hdata
+end
+
+function spectra(pop::Vector{Organism})
+    adata, gdata, hdata = counts(pop)
+
+    afs = [Dict{Int, Int}() for _ = 1:length(pop[1])]
+    gfs = [Dict{Int, Int}() for _ = 1:length(pop[1])]
+    hfs = Dict{Int, Int}()
+    for locus = 1:length(pop[1])
+        for v in values(adata[locus])
+            afs[locus][v] = get(afs[locus], v, 0) + 1
+        end
+    end
+    for locus = 1:length(pop[1])
+        for v in values(gdata[locus])
+            gfs[locus][v] = get(gfs[locus], v, 0) + 1
+        end
+    end
+    for v in values(hdata)
+        hfs[v] = get(hfs, v, 0) + 1
+    end
+    afs, gfs, hfs
+end
+
+function history(ldb::Vector{LineageRecord}, idx::Int)
+    val = [idx]
+    l = idx
+    while l > 0
+        l = ldb[l].parent
+        push!(val, l)
+    end
+    reverse(val)
+end
+
+function distances(pop::Vector{Organism}, ldb::Vector{LineageRecord})
+    alleles = toarray(pop, :lineage)
+
+    dists = Array(Int, 4, 0)
+
+    idx = 1
+
+    for locus = 1:length(pop[1])
+        lineages = sort(unique(alleles[:,locus,:]))
+        dists = hcat(dists, Array(Int, 4, binomial(length(lineages), 2)))
+        nl = length(lineages)
+        h = Dict{Int, Vector{Int}}()
+        for i = 1:nl
+            l = lineages[i]
+            h[l] = history(ldb, l)
+        end
+        for i = 1:(nl-1), j = (i+1):nl
+            h1, h2 = h[lineages[i]], h[lineages[j]]
+            ca = intersect(h1, h2)
+            locca1 = findfirst(h1, ca[end])
+            locca2 = findfirst(h2, ca[end])
+            dists[1, idx] = locus
+            dists[2, idx] = lineages[i]
+            dists[3, idx] = lineages[j]
+            dists[4, idx] = length(h1) - locca1 + length(h2) - locca2
+            idx += 1
+        end
+    end
+    dists'
+end
+
 end
