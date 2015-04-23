@@ -60,7 +60,7 @@ end
 function hascoalesced(pops::Array{Organism, 2}, ldb::Vector{LineageRecord}, cidx::Int)
     coalesced = true
     n = size(pops, 1)
-    nloci = length(pops[1,1])
+    nloci = length(pops[1,cidx])
     for locus = 1:nloci
         ancestor = getancestor(pops[1, cidx].genes[locus, 1], ldb)
         for org = 1:n, chr = 1:2
@@ -86,13 +86,13 @@ end
 
 function evolve!(
     pops::Array{Organism, 2},
-    ldb::Vector{LineageRecord},
     params::ModelParameters,
     t::Int,
-    pidx::Int,
-    cidx::Int,
-    midx::Int,
     termoncoal::Bool)
+
+    # By convension, the 1st column in "pops" is a parental population at the beginning of simulation.
+    pidx, cidx = 1, 2
+
     # unpacking parameters
     n = params.popsize
     heterofit = params.heterozygousfitness
@@ -105,6 +105,16 @@ function evolve!(
     maxfit = max(heterofit, homofit)
     heterofit /= maxfit
     homofit /= maxfit
+
+    # find the largest state of genes.
+    midx = 0
+    for i = 1:n, locus = 1:nloci, chr = 1:2
+        state = pops[i, pidx].genes[locus, chr].state
+        midx < state && (midx = state)
+    end
+
+    # initialize database of lineages.
+    ldb = LineageRecord[LineageRecord(0, 0) for _ = 1:(2 * n * nloci)]
 
     mutarray = Array(Bool, nloci, 2) # boolean value for each gene if it will be mutated.
     ps = Array(Int, 2) # indices of parents of an offspring.
@@ -148,16 +158,21 @@ function evolve!(
                 break
             end
         end
-        pidx, cidx = cidx, pidx
         if termoncoal && hascoalesced(pops, ldb, cidx)
             println("Info: All lineages share a common ancestor at generation ", gen)
             break
         end
+        pidx, cidx = cidx, pidx
     end
-    pidx, cidx, midx
+    if pidx == 1
+        for i = 1:n
+            pops[i, 1] = pops[i, 2]
+        end
+    end
+    ldb
 end
 
-function initialize!(pops::Array{Organism, 2}, ldb::Vector{LineageRecord}, params::ModelParameters)
+function initialize!(pops::Array{Organism, 2}, params::ModelParameters)
     n = params.popsize
     nloci = params.numberofloci
     # Initialize a parental population. Genes are distinct.
@@ -168,18 +183,16 @@ function initialize!(pops::Array{Organism, 2}, ldb::Vector{LineageRecord}, param
     for i = 1:n
         pops[i, 2] = Organism(nloci, 0)
     end
-    append!(ldb, [LineageRecord(0, 0) for _ in 1:(2 * nloci * n)])
     nothing
 end
 
-function recalibratelineages!(pops::Array{Organism, 2}, ldb::Vector{LineageRecord}, params::ModelParameters, pidx::Int)
-    empty!(ldb)
+function recalibratelineages!(pops::Array{Organism, 2}, params::ModelParameters)
+    pidx = 1
     lidx = 1
     for i = 1:params.popsize # iterate over a parental population
         for locus = 1:params.numberofloci, chr = 1:2
             g = pops[i, pidx].genes[locus, chr]
             pops[i, pidx].genes[locus, chr] = Gene(g.state, lidx)
-            push!(ldb, LineageRecord(0, 0))
             lidx += 1
         end
     end
@@ -187,27 +200,24 @@ function recalibratelineages!(pops::Array{Organism, 2}, ldb::Vector{LineageRecor
 end
 
 function simulate(params::ModelParameters, burnin::Int, t::Int)
-    ldb = Array(LineageRecord, 0) # a simple database of lineage, its parent, and epoch of the lineage.
     pops = Array(Organism, params.popsize, 2) # two populations, parental and offspring populations, stored as a 2-d array.
-    midx = 2 * params.popsize * params.numberofloci # state of the gene, which have the last mutation.
 
     # Initialization
     # All genes are distinct.
-    initialize!(pops, ldb, params)
+    initialize!(pops, params)
 
     # Burnin
     # Execute the exact-same sequence as main-loop of evolution and throws out lineage information afterwords.
     # This loop runs exacctly "burnin" generations regardless of the presence of coalescence.
-    pidx, cidx, midx = evolve!(pops, ldb, params, burnin, 1, 2, midx, false)
-    # pidx, cidx: indices of parental and offspring population in "pops".
+    evolve!(pops, params, burnin, false)
 
     # # Reset lineage information
-    recalibratelineages!(pops, ldb, params, pidx)
+    recalibratelineages!(pops, params)
 
     # Main loop of evolution
     # This loop terminates upon the first coalescence or after "t" generations.
-    _, cidx, _ = evolve!(pops, ldb, params, t, pidx, cidx, midx, true)
-    pops[:, cidx], ldb
+    ldb = evolve!(pops, params, t, true)
+    pops[:, 1], ldb
 end
 
 end
