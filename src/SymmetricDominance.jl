@@ -7,7 +7,7 @@ immutable ModelParameters
     numberofloci::Int
     heterozygousfitness::Float64
     homozygousfitness::Float64
-    recombinationrates::Vector{Float64}
+    recombinationrate::Float64
     mutationrates::Vector{Float64}
 end
 
@@ -57,16 +57,19 @@ function getparentids!(ps, n)
     nothing
 end
 
-function hascoalesced(pops::Array{Organism, 2}, ldbs::Vector{Vector{LineageRecord}}, locus::Int, cidx::Int)
+function hascoalesced(pops::Array{Organism, 2}, ldb::Vector{LineageRecord}, cidx::Int)
     coalesced = true
     n = size(pops, 1)
     nloci = length(pops[1,cidx])
-    ancestor = getancestor(pops[1, cidx].genes[locus, 1], ldbs[locus])
-    for org = 1:n, chr = 1:2
-        if ancestor != getancestor(pops[org, cidx].genes[locus, chr], ldbs[locus])
-            coalesced = false
-            break
+    for locus = 1:nloci
+        ancestor = getancestor(pops[1, cidx].genes[locus, 1], ldb)
+        for org = 1:n, chr = 1:2
+            if ancestor != getancestor(pops[org, cidx].genes[locus, chr], ldb)
+                coalesced = false
+                break
+            end
         end
+        coalesced || break
     end
     coalesced
 end
@@ -85,17 +88,16 @@ function evolve!(
     pops::Array{Organism, 2},
     params::ModelParameters,
     t::Int,
-    termon::Int)
+    termoncoal::Bool)
 
     # By convension, the 1st column in "pops" is a parental population at the beginning of simulation.
     pidx, cidx = 1, 2
 
     # unpacking parameters
     n = params.popsize
-    n2 = 2 * n
     heterofit = params.heterozygousfitness
     homofit = params.homozygousfitness
-    recombs = [0.0; params.recombinationrates]
+    recomb = params.recombinationrate
     muts = params.mutationrates
     nloci = params.numberofloci
 
@@ -111,11 +113,8 @@ function evolve!(
         midx < state && (midx = state)
     end
 
-    # initialize database of lineages; this is locus specific.
-    ldbs = [LineageRecord[LineageRecord(0, 0) for _ = 1:n2] for _ = 1:nloci]
-
-    # number of turnovers each locus has experience.
-    nturnover = [0 for _ = 1:nloci]
+    # initialize database of lineages.
+    ldb = LineageRecord[LineageRecord(0, 0) for _ = 1:(2 * n * nloci)]
 
     mutarray = Array(Bool, nloci, 2) # boolean value for each gene if it will be mutated.
     ps = Array(Int, 2) # indices of parents of an offspring.
@@ -149,27 +148,17 @@ function evolve!(
 
                 for par = 1:2,  locus = 1:nloci
                     if mutarray[locus, par]
-                        midx, g = mutate(pops[ps[par], pidx].genes[locus, parchrs[par]], midx, ldbs[locus], gen)
+                        midx, g = mutate(pops[ps[par], pidx].genes[locus, parchrs[par]], midx, ldb, gen)
                         pops[i, cidx].genes[locus, par] = g
                     else
                         pops[i, cidx].genes[locus, par] = pops[ps[par], pidx].genes[locus, parchrs[par]]
                     end
-                    parchrs[par] = rand() < recombs[locus] ? 3 - parchrs[par] : parchrs[par]
+                    parchrs[par] = rand() < recomb ? 3 - parchrs[par] : parchrs[par]
                 end
                 break
             end
         end
-        for locus = 1:nloci
-            if hascoalesced(pops, ldbs, locus, cidx)
-                nturnover[locus] += 1
-                resize!(ldbs[locus], n2)
-                for i = 1:n2
-                    ldbs[locus][i] = LineageRecord(0, gen)
-                end
-                recalibratelineages!(pops, params, locus, cidx)
-            end
-        end
-        if termon ==  minimum(nturnover)
+        if termoncoal && hascoalesced(pops, ldb, cidx)
             println("Info: All lineages share a common ancestor at generation ", gen)
             break
         end
@@ -180,7 +169,7 @@ function evolve!(
             pops[i, 1] = pops[i, 2]
         end
     end
-    ldbs
+    ldb
 end
 
 function initialize!(pops::Array{Organism, 2}, params::ModelParameters)
@@ -188,7 +177,7 @@ function initialize!(pops::Array{Organism, 2}, params::ModelParameters)
     nloci = params.numberofloci
     # Initialize a parental population. Genes are distinct.
     for i = 1:n
-        pops[i, 1] = Organism(nloci, 2 * (i - 1) + 1)
+        pops[i, 1] = Organism(nloci, 2 * nloci * (i - 1) + 1)
     end
     # Initialize an offspring population. All organisms are just placeholders, as such values don't matter.
     for i = 1:n
@@ -197,26 +186,20 @@ function initialize!(pops::Array{Organism, 2}, params::ModelParameters)
     nothing
 end
 
-function recalibratelineages!(pops::Array{Organism, 2}, params::ModelParameters, locus::Int, idx::Int)
+function recalibratelineages!(pops::Array{Organism, 2}, params::ModelParameters)
+    pidx = 1
     lidx = 1
     for i = 1:params.popsize # iterate over a parental population
-        for chr = 1:2
-            g = pops[i, idx].genes[locus, chr]
-            pops[i, idx].genes[locus, chr] = Gene(g.state, lidx)
+        for locus = 1:params.numberofloci, chr = 1:2
+            g = pops[i, pidx].genes[locus, chr]
+            pops[i, pidx].genes[locus, chr] = Gene(g.state, lidx)
             lidx += 1
         end
     end
     nothing
 end
 
-function recalibratelineages!(pops::Array{Organism, 2}, params::ModelParameters)
-    for locus = 1:params.numberofloci
-        recalibratelineages!(pops, params, locus, 1)
-    end
-    nothing
-end
-
-function simulate(params::ModelParameters, burnin::Int, t::Int, termon::Int)
+function simulate(params::ModelParameters, burnin::Int, t::Int)
     pops = Array(Organism, params.popsize, 2) # two populations, parental and offspring populations, stored as a 2-d array.
 
     # Initialization
@@ -226,15 +209,15 @@ function simulate(params::ModelParameters, burnin::Int, t::Int, termon::Int)
     # Burnin
     # Execute the exact-same sequence as main-loop of evolution and throws out lineage information afterwords.
     # This loop runs exacctly "burnin" generations regardless of the presence of coalescence.
-    evolve!(pops, params, burnin, -1)
+    evolve!(pops, params, burnin, false)
 
     # # Reset lineage information
     recalibratelineages!(pops, params)
 
     # Main loop of evolution
     # This loop terminates upon the first coalescence or after "t" generations.
-    ldbs = evolve!(pops, params, t, termon)
-    pops[:, 1], ldbs
+    ldb = evolve!(pops, params, t, true)
+    pops[:, 1], ldb
 end
 
 toarray(pop::Vector{Organism}, field::Symbol) = [getfield(org.genes[locus, chr], field) for org in pop, locus = 1:length(pop[1]), chr = 1:2]
@@ -296,53 +279,35 @@ function history(ldb::Vector{LineageRecord}, idx::Int)
     reverse(val)
 end
 
-function distances(pop::Vector{Organism}, ldbs::Vector{Vector{LineageRecord}})
-    alleles = toarray(pop, :state)
-    lineages = toarray(pop, :lineage)
+function distances(pop::Vector{Organism}, ldb::Vector{LineageRecord})
+    alleles = toarray(pop, :lineage)
 
     dists = Array(Int, 4, 0)
 
     idx = 1
 
-    nloci = length(pop[1])
-    ladicts = [Dict{Int, Int}() for _ = 1:nloci]
-
-    for locus = 1:nloci
-        for (lineage, allele) in zip(lineages[:,locus,:], alleles[:,locus,:])
-            if haskey(ladicts[locus], lineage)
-                println("error a lineage is associated with more than one alleles.")
-            end
-            ladicts[locus][lineage] = allele
-        end
-    end
-
-    for locus = 1:nloci
-        ls = sort(unique(lineages[:,locus,:]))
-        dists = hcat(dists, Array(Int, 4, binomial(length(ls), 2)))
-        nl = length(ls)
+    for locus = 1:length(pop[1])
+        lineages = sort(unique(alleles[:,locus,:]))
+        dists = hcat(dists, Array(Int, 4, binomial(length(lineages), 2)))
+        nl = length(lineages)
         h = Dict{Int, Vector{Int}}()
         for i = 1:nl
-            l = ls[i]
-            h[l] = history(ldbs[locus], l)
+            l = lineages[i]
+            h[l] = history(ldb, l)
         end
         for i = 1:(nl-1), j = (i+1):nl
-            h1, h2 = h[ls[i]], h[ls[j]]
+            h1, h2 = h[lineages[i]], h[lineages[j]]
             ca = intersect(h1, h2)
             locca1 = findfirst(h1, ca[end])
             locca2 = findfirst(h2, ca[end])
             dists[1, idx] = locus
-            a1, a2 = ladicts[locus][ls[i]], ladicts[locus][ls[j]]
-            if a1 > a2
-                a1, a2 = a2, a1
-            end
-            dists[2, idx] = a1
-            dists[3, idx] = a2
+            dists[2, idx] = lineages[i]
+            dists[3, idx] = lineages[j]
             dists[4, idx] = length(h1) - locca1 + length(h2) - locca2
             idx += 1
         end
     end
-    d = dists'
-    sortrows(d, by=x->(x[1], x[2], x[3]))
+    dists'
 end
 
 end
