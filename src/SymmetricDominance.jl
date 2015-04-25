@@ -7,7 +7,7 @@ immutable ModelParameters
     numberofloci::Int
     heterozygousfitness::Float64
     homozygousfitness::Float64
-    recombinationrate::Float64
+    recombinationrates::Vector{Float64}
     mutationrates::Vector{Float64}
 end
 
@@ -97,7 +97,7 @@ function evolve!(
     n = params.popsize
     heterofit = params.heterozygousfitness
     homofit = params.homozygousfitness
-    recomb = params.recombinationrate
+    recombs = [0.0; params.recombinationrates]
     muts = params.mutationrates
     nloci = params.numberofloci
 
@@ -153,7 +153,7 @@ function evolve!(
                     else
                         pops[i, cidx].genes[locus, par] = pops[ps[par], pidx].genes[locus, parchrs[par]]
                     end
-                    parchrs[par] = rand() < recomb ? 3 - parchrs[par] : parchrs[par]
+                    parchrs[par] = rand() < recombs[locus] ? 3 - parchrs[par] : parchrs[par]
                 end
                 break
             end
