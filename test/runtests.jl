@@ -3,106 +3,172 @@ using Base.Test
 
 const sd = SymmetricDominance
 
-const g1 = sd.Gene(1, 1)
-const g2 = sd.Gene(1, 2)
-const g3 = sd.Gene(2, 3)
+const gdb = sd.GeneDB()
 
-@test sd.isidbystate(g1, g2) == true
-@test sd.isidbystate(g1, g3) != true
-@test sd.isidbystate(g2, g3) != true
+for _ = 1:2
+    sd.insert!(sd.WithNewAllele, gdb, 1, 0)
+end
+for i = 1:2, _ = 1:2
+    sd.insert!(sd.WithNewAllele, gdb, 2, i)
+end
+for i = 3:6, _ = 1:2
+    sd.insert!(sd.WithNewAllele, gdb, 3, i)
+end
+@test gdb.currentid == 14
+@test gdb.currentstate == 14
+sd.insert!(sd.WithoutNewAllele, gdb, 4, 1, sd.select(gdb, 1, :state)[1])
+@test gdb.currentid == 15
+@test gdb.currentstate == 14
 
-const ldb = Array(sd.LineageRecord, 0)
-append!(ldb, [sd.LineageRecord(0, 1), sd.LineageRecord(0, 2), sd.LineageRecord(0, 3)])
-midx, g4 = sd.mutate(g1, 2, ldb, 3)
-@test midx == 3
-@test g4 == sd.Gene(3, length(ldb))
-@test ldb[end] == sd.LineageRecord(1, 3)
+@test sd.isidbystate(gdb, 1, 1) == true
+@test sd.isidbystate(gdb, 1, 15) == true
+@test sd.isidbystate(gdb, 15, 1) == true
+@test sd.isidbystate(gdb, 1, 2) != true
+@test sd.isidbystate(gdb, 2, 1) != true
+@test sd.isidbystate(gdb, 2, 6) != true
+@test sd.isidbystate(gdb, 6, 2) != true
 
-const g5 = sd.Gene(3, length(ldb) + 1)
-push!(ldb, sd.LineageRecord(4, 5))
-@test 1 == sd.getancestor(g5, ldb)
+@test sd.getancestor(gdb, 1, 1) == 1
+@test sd.getancestor(gdb, 2, 1) == 2
+@test sd.getancestor(gdb, 3, 1) == 1
+@test sd.getancestor(gdb, 4, 1) == 1
+@test sd.getancestor(gdb, 5, 1) == 2
+@test sd.getancestor(gdb, 6, 1) == 2
+@test sd.getancestor(gdb, 7, 1) == 1
+@test sd.getancestor(gdb, 8, 1) == 1
+@test sd.getancestor(gdb, 9, 1) == 1
+@test sd.getancestor(gdb, 10, 1) == 1
+@test sd.getancestor(gdb, 11, 1) == 2
+@test sd.getancestor(gdb, 12, 1) == 2
+@test sd.getancestor(gdb, 13, 1) == 2
+@test sd.getancestor(gdb, 14, 1) == 2
+@test sd.getancestor(gdb, 15, 1) == 1
+@test sd.getancestor(gdb, 3, 2) == 3
+@test sd.getancestor(gdb, 4, 2) == 4
+@test sd.getancestor(gdb, 5, 2) == 5
+@test sd.getancestor(gdb, 6, 2) == 6
+@test sd.getancestor(gdb, 7, 2) == 3
+@test sd.getancestor(gdb, 8, 2) == 3
+@test sd.getancestor(gdb, 9, 2) == 4
+@test sd.getancestor(gdb, 10, 2) == 4
+@test sd.getancestor(gdb, 11, 2) == 5
+@test sd.getancestor(gdb, 12, 2) == 5
+@test sd.getancestor(gdb, 13, 2) == 6
+@test sd.getancestor(gdb, 14, 2) == 6
+@test sd.getancestor(gdb, 15, 2) == 1
+@test sd.getancestor(gdb, 7, 3) == 7
+@test sd.getancestor(gdb, 8, 3) == 8
+@test sd.getancestor(gdb, 9, 3) == 9
+@test sd.getancestor(gdb, 10, 3) == 10
+@test sd.getancestor(gdb, 11, 3) == 11
+@test sd.getancestor(gdb, 12, 3) == 12
+@test sd.getancestor(gdb, 13, 3) == 13
+@test sd.getancestor(gdb, 14, 3) == 14
+@test sd.getancestor(gdb, 15, 3) == 1
 
-const ps = Array(Int, 2)
-for _ = 1:10000
-    sd.getparentids!(ps, 10)
-    @test ps[1] != ps[2]
+const o = sd.Organism(3)
+@test sd.nloci(o) == 3
+
+const pop = sd.Population(2, 1)
+pop[1, 1, 1] = 7
+pop[2, 1, 1] = 8
+pop[1, 1, 2] = 9
+pop[2, 1, 2] = 10
+@test sd.hascoalesced(gdb, pop, 1, 1)
+@test !sd.hascoalesced(gdb, pop, 1, 2)
+
+for i = 1:15
+    gdb.state[i] += 10
 end
 
-const o = sd.Organism([sd.Gene(0, 0) sd.Gene(0, 0);
-                       sd.Gene(0, 0) sd.Gene(0, 0);
-                       sd.Gene(0, 0) sd.Gene(0, 0)])
-@test length(o) == 3
-
-empty!(ldb)
-append!(ldb, [sd.LineageRecord(0, 0), sd.LineageRecord(0, 0), sd.LineageRecord(0, 0), sd.LineageRecord(0, 0),
-              sd.LineageRecord(1, 1), sd.LineageRecord(2, 1), sd.LineageRecord(3, 1), sd.LineageRecord(4, 1),
-              sd.LineageRecord(5, 2), sd.LineageRecord(5, 2), sd.LineageRecord(6, 2), sd.LineageRecord(6, 2),
-              sd.LineageRecord(7, 2), sd.LineageRecord(7, 2), sd.LineageRecord(8, 2), sd.LineageRecord(8, 2)])
-
-const pops = [sd.Organism([sd.Gene(1, 9) sd.Gene(2, 10); sd.Gene(3, 13) sd.Gene(4, 14)]) sd.Organism([sd.Gene(5, 9) sd.Gene(6, 11); sd.Gene(7, 13) sd.Gene(8, 14)]);
-              sd.Organism([sd.Gene(9, 9) sd.Gene(10, 10); sd.Gene(11, 13) sd.Gene(12, 14)]) sd.Organism([sd.Gene(13, 11) sd.Gene(14, 12); sd.Gene(15, 15) sd.Gene(16, 16)])]
-@test sd.hascoalesced(pops, ldb, 1)
-@test !sd.hascoalesced(pops, ldb, 2)
-
-
-sdata3 = Array(Int, 2, 2, 2)
-sdata3[1, 1, 1] = 1
-sdata3[2, 1, 1] = 9
-sdata3[1, 2, 1] = 3
-sdata3[2, 2, 1] = 11
-sdata3[1, 1, 2] = 2
+sdata3 = Array(Int, 2, 1, 2)
+sdata3[1, 1, 1] = 7
+sdata3[2, 1, 1] = 8
+sdata3[1, 1, 2] = 9
 sdata3[2, 1, 2] = 10
-sdata3[1, 2, 2] = 4
-sdata3[2, 2, 2] = 12
-@test sd.toarray(pops[:,1], :state) == sdata3
-sdata3[1, 1, 1] = 5
-sdata3[2, 1, 1] = 13
-sdata3[1, 2, 1] = 7
-sdata3[2, 2, 1] = 15
-sdata3[1, 1, 2] = 6
-sdata3[2, 1, 2] = 14
-sdata3[1, 2, 2] = 8
-sdata3[2, 2, 2] = 16
-@test sd.toarray(pops[:,2], :state) == sdata3
+@test sd.toarray(gdb, pop, :id) == sdata3
+sdata3[1, 1, 1] = 17
+sdata3[2, 1, 1] = 18
+sdata3[1, 1, 2] = 19
+sdata3[2, 1, 2] = 20
+@test sd.toarray(gdb, pop, :state) == sdata3
+sdata3[1, 1, 1] = 3
+sdata3[2, 1, 1] = 3
+sdata3[1, 1, 2] = 4
+sdata3[2, 1, 2] = 4
+@test sd.toarray(gdb, pop, :parent) == sdata3
+sdata3[1, 1, 1] = 3
+sdata3[2, 1, 1] = 3
+sdata3[1, 1, 2] = 3
+sdata3[2, 1, 2] = 3
+@test sd.toarray(gdb, pop, :epoch) == sdata3
 
+const acs, gcs, hcs = sd.counts(gdb, pop)
+@test acs == [Dict{Int,Int}(17=>1, 18=>1, 19=>1, 20=>1)]
+@test gcs == [Dict{Tuple{Int,Int}, Int}((17, 19)=>1, (18, 20)=>1)]
+@test hcs == Dict{Tuple{Int}, Int}((17,)=>1, (18,)=>1, (19,)=>1, (20,)=>1)
 
-const acs, gcs, hcs = sd.counts(pops[:,1])
-@test acs == [Dict{Int,Int}(1=>1, 2=>1, 9=>1, 10=>1), Dict{Int,Int}(3=>1, 4=>1, 11=>1, 12=>1)]
-@test gcs == [Dict{Tuple{Int,Int}, Int}((1,2)=>1, (9,10)=>1), Dict{Tuple{Int,Int}, Int}((3,4)=>1, (11, 12)=>1)]
-@test hcs == Dict{Tuple{Int,Int}, Int}((1,3)=>1, (2,4)=>1, (9, 11)=>1, (10,12)=>1)
-
-const afs, gfs, hfs = sd.spectra(pops[:,1])
-@test afs == [Dict{Int,Int}(1=>4), Dict{Int,Int}(1=>4)]
-@test gfs == [Dict{Int,Int}(1=>2), Dict{Int,Int}(1=>2)]
+const afs, gfs, hfs = sd.spectra(gdb, pop)
+@test afs == [Dict{Int,Int}(1=>4)]
+@test gfs == [Dict{Int,Int}(1=>2)]
 @test hfs == Dict{Int,Int}(1=>4)
 
-@test sd.history(ldb, 1) == [0, 1]
-@test sd.history(ldb, 2) == [0, 2]
-@test sd.history(ldb, 3) == [0, 3]
-@test sd.history(ldb, 4) == [0, 4]
-@test sd.history(ldb, 5) == [0, 1, 5]
-@test sd.history(ldb, 6) == [0, 2, 6]
-@test sd.history(ldb, 7) == [0, 3, 7]
-@test sd.history(ldb, 8) == [0, 4, 8]
-@test sd.history(ldb, 9) == [0, 1, 5 ,9]
-@test sd.history(ldb, 10) == [0, 1, 5, 10]
-@test sd.history(ldb, 11) == [0, 2, 6, 11]
-@test sd.history(ldb, 12) == [0, 2, 6, 12]
-@test sd.history(ldb, 13) == [0, 3, 7, 13]
-@test sd.history(ldb, 14) == [0, 3, 7, 14]
-@test sd.history(ldb, 15) == [0, 4, 8, 15]
-@test sd.history(ldb, 16) == [0, 4, 8, 16]
+@test sd.history(gdb, 1, 1) == [1]
+@test sd.history(gdb, 2, 1) == [2]
+@test sd.history(gdb, 3, 1) == [1, 3]
+@test sd.history(gdb, 4, 1) == [1, 4]
+@test sd.history(gdb, 5, 1) == [2, 5]
+@test sd.history(gdb, 6, 1) == [2, 6]
+@test sd.history(gdb, 7, 1) == [1, 3, 7]
+@test sd.history(gdb, 8, 1) == [1, 3, 8]
+@test sd.history(gdb, 9, 1) == [1, 4 ,9]
+@test sd.history(gdb, 10, 1) == [1, 4, 10]
+@test sd.history(gdb, 11, 1) == [2, 5, 11]
+@test sd.history(gdb, 12, 1) == [2, 5, 12]
+@test sd.history(gdb, 13, 1) == [2, 6, 13]
+@test sd.history(gdb, 14, 1) == [2, 6, 14]
+@test sd.history(gdb, 15, 1) == [1, 15]
+@test sd.history(gdb, 3, 2) == [3]
+@test sd.history(gdb, 4, 2) == [4]
+@test sd.history(gdb, 5, 2) == [5]
+@test sd.history(gdb, 6, 2) == [6]
+@test sd.history(gdb, 7, 2) == [3, 7]
+@test sd.history(gdb, 8, 2) == [3, 8]
+@test sd.history(gdb, 9, 2) == [4 ,9]
+@test sd.history(gdb, 10, 2) == [4, 10]
+@test sd.history(gdb, 11, 2) == [5, 11]
+@test sd.history(gdb, 12, 2) == [5, 12]
+@test sd.history(gdb, 13, 2) == [6, 13]
+@test sd.history(gdb, 14, 2) == [6, 14]
+@test sd.history(gdb, 15, 2) == [1, 15]
+@test sd.history(gdb, 7, 3) == [7]
+@test sd.history(gdb, 8, 3) == [8]
+@test sd.history(gdb, 9, 3) == [9]
+@test sd.history(gdb, 10, 3) == [10]
+@test sd.history(gdb, 11, 3) == [11]
+@test sd.history(gdb, 12, 3) == [12]
+@test sd.history(gdb, 13, 3) == [13]
+@test sd.history(gdb, 14, 3) == [14]
+@test sd.history(gdb, 15, 3) == [1, 15]
 
-ds = sd.distances(pops[:,1], ldb)
-@test ds == [1 9 10 2;
-             2 13 14 2]
-ds = sd.distances(pops[:,2], ldb)
-@test ds == [1 9 11 6;
-             1 9 12 6;
-             1 11 12 2;
-             2 13 14 2;
-             2 13 15 6;
-             2 13 16 6;
-             2 14 15 6;
-             2 14 16 6;
-             2 15 16 2];
+ds = sd.distances(gdb, pop, 1)
+@test ds == [1 17 18 2;
+             1 17 19 4;
+             1 17 20 4;
+             1 18 19 4;
+             1 18 20 4;
+             1 19 20 2]
+ds = sd.distances(gdb, pop, 2)
+@test ds == [1 17 18 2;
+             1 17 19 -1;
+             1 17 20 -1;
+             1 18 19 -1;
+             1 18 20 -1;
+             1 19 20 2]
+ds = sd.distances(gdb, pop, 3)
+@test ds == [1 17 18 -1;
+             1 17 19 -1;
+             1 17 20 -1;
+             1 18 19 -1;
+             1 18 20 -1;
+             1 19 20 -1]

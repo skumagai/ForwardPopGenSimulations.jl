@@ -78,6 +78,7 @@ Base.done(pop::Population, iter) = done(pop.data, iter)
 Base.length(pop::Population) = length(pop.data)
 
 nloci(pop::Population) = size(pop[1].geneids, 1)
+nloci(org::Organism) = size(org.geneids, 1)
 
 Base.getindex(org::Organism, locus::Int, chr::Int) = org.geneids[locus, chr]
 Base.setindex!(org::Organism, val::Int, locus::Int, chr::Int) = org.geneids[locus, chr] = val
@@ -111,7 +112,6 @@ end
 
 function getancestor(gdb::GeneDB, geneid::Int, lastcoal::Int)
     epoch = select(gdb, geneid, :epoch)[1]
-
     while epoch > lastcoal
         geneid = select(gdb, geneid, :parent)[1]
         epoch = select(gdb, geneid, :epoch)[1]
@@ -241,7 +241,7 @@ function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
 end
 
 function toarray(gdb::GeneDB, pop::Population, field::Symbol)
-    [select(gdb, org[locus, chr], field)[1] for org in pop, locus = 1:nloci(pop), chr = 1:2]
+    Int[select(gdb, org[locus, chr], field)[1] for org in pop, locus = 1:nloci(pop), chr = 1:2]
 end
 
 function counts(gdb::GeneDB, pop::Population)
@@ -293,17 +293,18 @@ function spectra(gdb::GeneDB, pop::Population)
     afs, gfs, hfs
 end
 
-function history(gdb::GeneDB, idx::Int, termon::Int)
+function history(gdb::GeneDB, idx::Int, lastcoal::Int)
     val = [idx]
     epoch = select(gdb, idx, :epoch)[1]
-    while epoch > termon
-        idx, epoch = select(gdb, idx, :parent, :epoch)
+    while epoch > lastcoal
+        idx = select(gdb, idx, :parent)[1]
+        epoch = select(gdb, idx, :epoch)[1]
         push!(val, idx)
     end
     reverse(val)
 end
 
-function distances(gdb::GeneDB, pop::Population, termon::Int)
+function distances(gdb::GeneDB, pop::Population, lastcoal::Int)
     alleles = toarray(gdb, pop, :id)
     states = Dict{Int, Int}()
     for org in pop, locus = 1:nloci(pop), chr = 1:2
@@ -322,17 +323,21 @@ function distances(gdb::GeneDB, pop::Population, termon::Int)
         h = Dict{Int, Vector{Int}}()
         for i = 1:nl
             l = lineages[i]
-            h[l] = history(gdb, l, termon)
+            h[l] = history(gdb, l, lastcoal)
         end
         for i = 1:(nl-1), j = (i+1):nl
             h1, h2 = h[lineages[i]], h[lineages[j]]
             ca = intersect(h1, h2)
-            locca1 = findfirst(h1, ca[end])
-            locca2 = findfirst(h2, ca[end])
             dists[1, idx] = locus
-            dists[2, idx] = states[i]
-            dists[3, idx] = states[j]
-            dists[4, idx] = length(h1) - locca1 + length(h2) - locca2
+            dists[2, idx] = states[lineages[i]]
+            dists[3, idx] = states[lineages[j]]
+            if length(ca) > 0
+                locca1 = findfirst(h1, ca[end])
+                locca2 = findfirst(h2, ca[end])
+                dists[4, idx] = length(h1) - locca1 + length(h2) - locca2
+            else
+                dists[4, idx] = -1
+            end
             idx += 1
         end
     end
