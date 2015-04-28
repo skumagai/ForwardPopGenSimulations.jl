@@ -344,4 +344,35 @@ function distances(gdb::GeneDB, pop::Population, lastcoal::Int)
     dists'
 end
 
+function nsegregatingsites(gdb::GeneDB, pop::Population, lastcoal::Int)
+    # The number of segregating sites in the number of mutations in a tree up to the most recent common ancestor.
+    lineages = toarray(gdb, pop, :id)
+
+    nl = nloci(pop)
+    nms = Array(Int, nl)
+    for locus = 1:nl
+        # First, check if every loci have MRCA. If not, number of mutations is not well-defined. In this case, simply return -1.
+        if !hascoalesced(gdb, pop, locus, lastcoal)
+            nms[locus] = -1
+            continue
+        end
+
+        # Then, construct a set of mutations along a tree up until MRCA. This will include
+        # MRCA. However, this should not be in the final number, as all samples have the same allele.
+        ids = unique(lineages[:, locus, :])
+        hists = Vector{Int}[history(gdb, id, lastcoal) for id in ids]
+        commons = copy(hists[1])
+        for h in hists
+            commons = intersect(commons, h)
+        end
+        ca = commons[end]
+        muts = Int[]
+        for h in hists
+            muts = union(muts, h[findfirst(h, ca):end])
+        end
+        nms[locus] = length(muts) - 1
+    end
+    nms
+end
+
 end

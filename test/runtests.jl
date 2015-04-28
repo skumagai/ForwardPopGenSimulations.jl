@@ -172,3 +172,7 @@ ds = sd.distances(gdb, pop, 3)
              1 18 19 -1;
              1 18 20 -1;
              1 19 20 -1]
+
+@test sd.nsegregatingsites(gdb, pop, 1) == [6]
+@test sd.nsegregatingsites(gdb, pop, 2) == [-1]
+@test sd.nsegregatingsites(gdb, pop, 3) == [-1]
