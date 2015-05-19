@@ -1,6 +1,6 @@
 module SymmetricDominance
 
-export ModelParameters, simulate, tmrca
+export ModelParameters, simulate, tmrca, nsegsites, distances, spectra
 
 typealias WithoutNewAllele Val{0}
 typealias WithNewAllele Val{1}
