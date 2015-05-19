@@ -1,6 +1,6 @@
 module SymmetricDominance
 
-export ModelParameters, simulate
+export ModelParameters, simulate, tmrca
 
 typealias WithoutNewAllele Val{0}
 typealias WithNewAllele Val{1}
@@ -194,7 +194,7 @@ function evolve!(gdb::GeneDB, parpop::Population, params::ModelParameters, t::In
             break
         end
     end
-    parpop
+    parpop, gen
 end
 
 function initialize!(pop::Population)
@@ -225,7 +225,7 @@ end
 function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
 
     # This is a parental population, a population of offspring is created within evolve! function.
-    pop = Population(params.popsize, params.numberofloci)
+    pop, t = Population(params.popsize, params.numberofloci)
 
     # Burnin
     # Execute the exact-same sequence as main-loop of evolution and throws out lineage information afterwords.
@@ -236,8 +236,8 @@ function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
     # Main loop of evolution
     # This loop terminates upon the first coalescence or after "t" generations.
     gdb = reinitialize!(pop, gdb)
-    pop = evolve!(gdb, pop, params, t, turmon)
-    pop, gdb
+    pop, t = evolve!(gdb, pop, params, t, turmon)
+    pop, gdb, t
 end
 
 function toarray(gdb::GeneDB, pop::Population, field::Symbol)
@@ -373,6 +373,21 @@ function nsegsites(gdb::GeneDB, pop::Population, lastcoal::Int)
         nms[locus] = length(muts) - 1
     end
     nms
+end
+
+function tmrca(gdb::GeneDB, pop::Population)
+    # Computes time until the most recent common ancestor.
+    nl= nloci(pop)
+    ts = Array(Int, nl)
+
+    for locus = 1:nl
+        path = IntSet(history(gdb, pop[1, locus, 1], 0))
+        for org in pop, chr = 1:2
+            intersect!(path, IntSet(history(gdb, org[locus, chr], 0)))
+        end
+        ts[locus] = select(gdb, maximum(path), :epoch)[1]
+    end
+    ts
 end
 
 end

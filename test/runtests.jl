@@ -176,3 +176,5 @@ ds = sd.distances(gdb, pop, 3)
 @test sd.nsegsites(gdb, pop, 1) == [6]
 @test sd.nsegsites(gdb, pop, 2) == [-1]
 @test sd.nsegsites(gdb, pop, 3) == [-1]
+
+@test sd.tmrca(gdb, pop) == [1]
