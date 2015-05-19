@@ -344,7 +344,7 @@ function distances(gdb::GeneDB, pop::Population, lastcoal::Int)
     dists'
 end
 
-function nsegregatingsites(gdb::GeneDB, pop::Population, lastcoal::Int)
+function nsegsites(gdb::GeneDB, pop::Population, lastcoal::Int)
     # The number of segregating sites in the number of mutations in a tree up to the most recent common ancestor.
     lineages = toarray(gdb, pop, :id)
 
