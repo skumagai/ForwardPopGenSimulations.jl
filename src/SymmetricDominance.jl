@@ -225,13 +225,13 @@ end
 function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
 
     # This is a parental population, a population of offspring is created within evolve! function.
-    pop, t = Population(params.popsize, params.numberofloci)
+    pop = Population(params.popsize, params.numberofloci)
 
     # Burnin
     # Execute the exact-same sequence as main-loop of evolution and throws out lineage information afterwords.
     # This loop runs exacctly "burnin" generations regardless of the presence of coalescence.
     gdb = initialize!(pop) # all genes are distinct
-    pop = evolve!(gdb, pop, params, burnin, -1)
+    pop, t = evolve!(gdb, pop, params, burnin, -1)
 
     # Main loop of evolution
     # This loop terminates upon the first coalescence or after "t" generations.
