@@ -216,8 +216,15 @@ end
 
 function reinitialize!(pop::Population, oldgdb::GeneDB)
     gdb = GeneDB()
+    smap = Dict{Int, Int}()
+    smax = 1
     for org in pop, locus = 1:nloci(pop), chr = 1:2
-        org[locus, chr] = insert!(WithoutNewAllele, gdb, 1, 0, select(oldgdb, org[locus, chr], :state)[1])
+        state = select(oldgdb, org[locus, chr], :state)[1]
+        if !haskey(smap, state)
+            smap[state] = smax
+            smax += 1
+        end
+        org[locus, chr] = insert!(WithoutNewAllele, gdb, 1, 0, smap[state])
     end
     gdb
 end
