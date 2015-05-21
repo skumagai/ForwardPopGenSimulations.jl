@@ -229,7 +229,7 @@ function reinitialize!(pop::Population, oldgdb::GeneDB)
     gdb
 end
 
-function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
+function simulate(params::ModelParameters, burnin::Int, t::Int, termon::Int)
 
     # This is a parental population, a population of offspring is created within evolve! function.
     pop = Population(params.popsize, params.numberofloci)
@@ -243,7 +243,7 @@ function simulate(params::ModelParameters, burnin::Int, t::Int, turmon::Int)
     # Main loop of evolution
     # This loop terminates upon the first coalescence or after "t" generations.
     gdb = reinitialize!(pop, gdb)
-    pop, t = evolve!(gdb, pop, params, t, turmon)
+    pop, t = evolve!(gdb, pop, params, t, termon)
     pop, gdb, t
 end
 
