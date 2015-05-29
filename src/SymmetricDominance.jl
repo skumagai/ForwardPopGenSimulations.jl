@@ -15,7 +15,7 @@ end
 
 immutable Organism
     geneids::Matrix{Int}
-    Organism(nloci::Int) = new(Array(Int, nloci, 2))
+    Organism(nloci::Int) = new(Array{Int}(nloci, 2))
 end
 
 immutable Population
@@ -46,14 +46,12 @@ function getgenes!(gids::AbstractArray, pop::Population, loci::Int)
     nothing
 end
 
-function cleandb!(gdb::GeneDB, pop::Population, gids::AbstractArray)
+function cleandb!{T}(gdb::GeneDB, pop::Population, gids::AbstractArray{T, 2})
     n = length(pop)
     nl = nloci(pop)
-    blocksize = 2 * n
-    length(gids) == 2 * n * nl || error("array(# genes) != 2 * population size * number of loci")
+    size(gids) == (2 * n, nl) || error("Dimension mismatch")
     for locus = 1:nloci
-        fst, lst = (1 + (locus - 1) * blocksize):(locus * blocksize)
-        getgenes!(sub(gids, fst:last), pop, locus)
+        getgenes!(sub(gids, :, locus), pop, locus)
     end
     clean!(gdb, gids)
     nothing
@@ -82,17 +80,17 @@ function evolve!(gdb::GeneDB, parpop::Population, params::ModelParameters, state
     heterofit /= maxfit
     homofit /= maxfit
 
-    mutarray = Array(Bool, nloci, 2) # boolean value for each gene if it will be mutated.
-    ps = Array(Int, 2) # indices of parents of an offspring.
-    parchrs = Array(Int, 2) # a gene from which chromosome is passed on to offspring.
+    mutarray = Array{Bool}(nloci, 2) # boolean value for each gene if it will be mutated.
+    ps = Array{Int}(2) # indices of parents of an offspring.
+    parchrs = Array{Int}(2) # a gene from which chromosome is passed on to offspring.
 
     ncoals = [0 for _ = 1:nloci]
     lastcoals = [0 for _ = 1:nloci]
 
     chpop = Population(n, nloci)
 
-    gids = Array(Int, 2 * n)
-    allgids = Array(Int, 2 * n * nloci)
+    gids = Array{Int}(2 * n)
+    allgids = Array{Int}(2 * n, nloci)
 
     gen = 1 # current generation
     for gen = 1:t
@@ -120,8 +118,7 @@ function evolve!(gdb::GeneDB, parpop::Population, params::ModelParameters, state
                         chpop[i, locus, par] = transmit!(gdb, gen, state, parpop[ps[par], locus, parchrs[par]])
                         state += 1
                     else
-                        parent = parpop[ps[par], locus, parchrs[par]]
-                        chpop[i, locus, par] = transmit!(gdb, gen, parent, gdb[parent].state)
+                        chpop[i, locus, par] = transmit!(gdb, gen, parpop[ps[par], locus, parchrs[par]])
                     end
                     parchrs[par] = rand() < recombs[locus] ? 3 - parchrs[par] : parchrs[par]
                 end

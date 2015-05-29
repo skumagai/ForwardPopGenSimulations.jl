@@ -7,12 +7,11 @@ gdb = sd.GeneDB()
 
 type StateCounter
     state::Int
-    StateCounter() = new(0)
 end
 
 nextstate!(s::StateCounter) = (s.state += 1; s.state)
 
-sc = StateCounter()
+sc = StateCounter(0)
 
 for _ = 1:2
     sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
@@ -25,14 +24,21 @@ for i = 3:6, _ = 1:2
 end
 @test gdb.currentid == 14
 @test sc.state == 14
-sd.insert!(gdb, sd.GeneRecord(4, gdb[1].state, gdb[1]))
+sd.insert!(gdb, sd.GeneRecord(4, gdb[1]))
 @test gdb.currentid == 15
 @test sc.state == 14
-@test IntSet(keys(gdb)) == IntSet(1:15)
+@test Set(keys(gdb)) == Set(1:15)
 for i = 1:15
     @test haskey(gdb, i) == true
 end
 @test haskey(gdb, 16) == false
+for i = 1:2
+    @test isa(gdb[i].event, sd.Transmission) == true
+end
+for i = 3:14
+    @test isa(gdb[i].event, sd.Mutation) == true
+end
+@test isa(gdb[15].event, sd.Transmission) == true
 
 @test sd.isidbystate(gdb, 1, 1) == true
 @test sd.isidbystate(gdb, 1, 15) == true
@@ -124,14 +130,14 @@ ds = sd.distances(gdb, gids)
 @test sd.mrca(gdb, gids).epoch == 1
 
 gdb = sd.GeneDB()
-sc = StateCounter()
+sc = StateCounter(0)
 sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
 sd.insert!(gdb, sd.GeneRecord(2, 1, gdb[1]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
-@test IntSet(collect(keys(gdb))) == IntSet([1, 2, 3, 4])
+@test Set(collect(keys(gdb))) == Set([1, 2, 3, 4])
 sd.clean!(gdb, [3, 4])
-@test IntSet(collect(keys(gdb))) == IntSet([2, 3, 4])
+@test Set(collect(keys(gdb))) == Set([2, 3, 4])
 
 gdb = sd.GeneDB()
 sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
@@ -140,4 +146,16 @@ sd.insert!(gdb, sd.GeneRecord(2, 1, gdb[1]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
 sd.clean!(gdb, [4, 5])
-@test IntSet(collect(keys(gdb))) == IntSet([2, 4, 5])
+@test Set(collect(keys(gdb))) == Set([2, 4, 5])
+
+gdb = sd.GeneDB()
+sd.insert!(gdb, sd.GeneRecord(1, 1))
+sd.insert!(gdb, sd.GeneRecord(2, 2, gdb[1]))
+sd.insert!(gdb, sd.GeneRecord(3, gdb[2]))
+sd.insert!(gdb, sd.GeneRecord(4, gdb[3]))
+sd.insert!(gdb, sd.GeneRecord(5, 3, gdb[4]))
+sd.insert!(gdb, sd.GeneRecord(5, gdb[3]))
+@test Set(collect(keys(gdb))) == Set([1:6;])
+@test sd.mrca(gdb, [5, 6]) == gdb[3]
+sd.clean!(gdb, [5, 6])
+@test Set(collect(keys(gdb))) == Set([3, 5, 6])
