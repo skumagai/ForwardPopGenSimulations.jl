@@ -2,7 +2,6 @@ type GeneRecord
     # Primary information of lineages: Immutable throughout a simulation.
     epoch::Int
     state::Int
-    locus::Int
     # id = 0 is a special type that the gene does not appear explicitly in a simulation.
     # In other words, id = 0 indicates the identity of a gene is unknown, so I can't say
     # gene(id = 0) == gene(id = 0).
@@ -12,13 +11,13 @@ type GeneRecord
     parent::GeneRecord
 
     # id is intentionally left unspecified. That field is specified upon insertion in to GeneDB.
-    function GeneRecord(epoch::Int, state::Int, locus::Int)
-        self = new(epoch, state, locus)
+    function GeneRecord(epoch::Int, state::Int)
+        self = new(epoch, state)
         self.parent = self
         self
     end
     function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
-        self = new(epoch, state, parent.locus)
+        self = new(epoch, state)
         self.parent = parent
         self
     end
@@ -119,7 +118,7 @@ function history(gdb::GeneDB, idx::Int)
     reverse(val)
 end
 
-_getca(gdb::GeneDB, path) = length(path) > 0 ? gdb[maximum(path)] : (g = GeneRecord(0, 0, 0); g.id = 0; g)
+_getca(gdb::GeneDB, path) = length(path) > 0 ? gdb[maximum(path)] : (g = GeneRecord(0, 0); g.id = 0; g)
 
 function ca(gdb::GeneDB, id1::Int, id2::Int)
     path = IntSet(history(gdb, id1))

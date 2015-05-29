@@ -15,7 +15,7 @@ nextstate!(s::StateCounter) = (s.state += 1; s.state)
 sc = StateCounter()
 
 for _ = 1:2
-    sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc), 1))
+    sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
 end
 for i = 1:2, _ = 1:2
     sd.insert!(gdb, sd.GeneRecord(2, nextstate!(sc), gdb[i]))
@@ -125,7 +125,7 @@ ds = sd.distances(gdb, gids)
 
 gdb = sd.GeneDB()
 sc = StateCounter()
-sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc), 1))
+sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
 sd.insert!(gdb, sd.GeneRecord(2, 1, gdb[1]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))
@@ -134,7 +134,7 @@ sd.clean!(gdb, [3, 4])
 @test IntSet(collect(keys(gdb))) == IntSet([2, 3, 4])
 
 gdb = sd.GeneDB()
-sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc), 1))
+sd.insert!(gdb, sd.GeneRecord(1, nextstate!(sc)))
 sd.insert!(gdb, sd.GeneRecord(2, 1, gdb[1]))
 sd.insert!(gdb, sd.GeneRecord(2, 1, gdb[1]))
 sd.insert!(gdb, sd.GeneRecord(3, 1, gdb[2]))

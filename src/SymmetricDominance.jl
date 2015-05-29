@@ -152,7 +152,7 @@ function initialize!(pop::Population)
     gdb = GeneDB()
     state = 1
     for org in pop, locus = 1:nloci(pop), chr = 1:2
-        org[locus, chr] = insert!(gdb, GeneRecord(0, state, locus))
+        org[locus, chr] = insert!(gdb, GeneRecord(0, state))
         state += 1
     end
     gdb, state
@@ -168,7 +168,7 @@ function reinitialize!(oldgdb::GeneDB, pop::Population)
             smap[state] = smax
             smax += 1
         end
-        org[locus, chr] = insert!(gdb, GeneRecord(0, smap[state], locus))
+        org[locus, chr] = insert!(gdb, GeneRecord(0, smap[state]))
     end
     gdb
 end
