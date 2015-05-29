@@ -159,3 +159,22 @@ sd.insert!(gdb, sd.GeneRecord(5, gdb[3]))
 @test sd.mrca(gdb, [5, 6]) == gdb[3]
 sd.clean!(gdb, [5, 6])
 @test Set(collect(keys(gdb))) == Set([3, 5, 6])
+
+gdb = sd.GeneDB()
+sd.insert!(gdb, sd.GeneRecord(1, 1))
+sd.insert!(gdb, sd.GeneRecord(2, 2, gdb[1]))
+sd.insert!(gdb, sd.GeneRecord(3, gdb[2]))
+sd.insert!(gdb, sd.GeneRecord(4, gdb[3]))
+sd.insert!(gdb, sd.GeneRecord(5, 3, gdb[4]))
+sd.insert!(gdb, sd.GeneRecord(5, gdb[3]))
+sd.insert!(gdb, sd.GeneRecord(1, 11))
+sd.insert!(gdb, sd.GeneRecord(2, 2, gdb[7]))
+sd.insert!(gdb, sd.GeneRecord(3, gdb[8]))
+sd.insert!(gdb, sd.GeneRecord(4, gdb[9]))
+sd.insert!(gdb, sd.GeneRecord(5, 3, gdb[10]))
+sd.insert!(gdb, sd.GeneRecord(5, gdb[9]))
+@test Set(collect(keys(gdb))) == Set([1:12;])
+@test sd.mrca(gdb, [5, 6]) == gdb[3]
+@test sd.mrca(gdb, [11, 12]) == gdb[9]
+sd.clean!(gdb, [5 11; 6 12])
+@test Set(collect(keys(gdb))) == Set([3, 5, 6, 9, 11, 12])

@@ -120,7 +120,10 @@ function _clean!(gdb::GeneDB, gids::AbstractArray)
         pid = p.id
         if !haskey(cs, id) && !in(id, gids)
             # This organism neither has offspring nor extant.
-            id != pid && deleteat!(cs[pid], findfirst(id))
+            if id != pid
+                deleteat!(cs[pid], findfirst(id))
+                length(cs[pid]) == 0 && delete!(cs, pid)
+            end
             drop!(gdb, id)
         elseif haskey(cs, id) && length(cs[id]) == 1 && isa(gdb[id].event, Transmission)
             c = gdb[cs[id][1]]
@@ -162,7 +165,7 @@ end
 function clean!{T}(gdb::GeneDB, gids::AbstractArray{T, 2})
     _clean!(gdb, gids)
     for locus = 1:size(gids, 2)
-        _trimancestors(gdb, sub(gids, :, locus))
+        _trimancestors!(gdb, sub(gids, :, locus))
     end
     nothing
 end
