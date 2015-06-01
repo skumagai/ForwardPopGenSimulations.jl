@@ -1,3 +1,5 @@
+module ForwardPopGenSims
+
 export Migration, GeneDB, GeneRecord, UndefGene
 export transmit!, toarray, history, ca, mrca, nsegsites, distances, nextid!
 
@@ -222,4 +224,6 @@ function nsegsites(gdb::GeneDB, gids::AbstractArray)
     end
 
     length(states) - 1
+end
+
 end
