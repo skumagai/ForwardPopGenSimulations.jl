@@ -138,3 +138,34 @@ fpgs.insert!(gdb, fpgs.GeneRecord(5, gdb[9]))
 @test fpgs.mrca(gdb, [11, 12]) == gdb[9]
 fpgs.clean!(gdb, [5 11; 6 12])
 @test Set(collect(keys(gdb))) == Set([3, 5, 6, 9, 11, 12])
+
+pars = Array{Int}(1)
+fpgs.selectparents!(pars, 10, replace=false)
+@test 0 < pars[1] < 11
+fpgs.selectparents!(pars, 10, replace=true)
+@test 0 < pars[1] < 11
+pars = Array{Int}(2)
+vec = Array{Bool}(100)
+for i = 1:100
+    fpgs.selectparents!(pars, 2, replace=false)
+    vec[i] = pars[1] == pars[2]
+end
+@test any(vec) == false
+
+for i = 1:100
+    fpgs.selectparents!(pars, 2, replace=true)
+    vec[i] = pars[1] == pars[2]
+end
+@test any(vec) == true
+
+mutarr = Array{Bool}(3, 2)
+rates= zeros(3, 2)
+fpgs.selectmutatedsites!(mutarr, rates)
+@test all(mutarr .== false) == true
+rates[:,:] = 1.0
+fpgs.selectmutatedsites!(mutarr, rates)
+@test all(mutarr .== true) == true
+rates[:,1] = 0.0
+fpgs.selectmutatedsites!(mutarr, rates)
+@test all(mutarr[:,1] .== false) == true
+@test all(mutarr[:,2] .== true) == true

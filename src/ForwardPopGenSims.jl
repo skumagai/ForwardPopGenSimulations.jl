@@ -1,7 +1,21 @@
 module ForwardPopGenSims
 
-export Migration, GeneDB, GeneRecord, UndefGene
-export transmit!, toarray, history, ca, mrca, nsegsites, distances, nextid!
+export Migration,
+       GeneDB,
+       GeneRecord,
+       UndefGene,
+
+       transmit!,
+       toarray,
+       history,
+       ca,
+       mrca,
+       nsegsites,
+       distances,
+       nextid!,
+       selectparents!,
+       selectmutatedsites!,
+       clean!
 
 immutable Transmission end
 immutable Mutation end
@@ -224,6 +238,27 @@ function nsegsites(gdb::GeneDB, gids::AbstractArray)
     end
 
     length(states) - 1
+end
+
+function selectparents!(ps, n; replace=false)
+    rand!(ps, 1:n)
+    lps = length(ps)
+    if replace == false && lps > 1
+        for i = 2:lps
+            while in(ps[i], sub(ps, 1:(i-1)))
+                ps[i] = rand(1:n)
+            end
+        end
+    end
+    nothing
+end
+
+function selectmutatedsites!(mutarray, rates)
+    size(mutarray) == size(rates) || error("Dimension mismatch in a mutation array and rate array.")
+    for iter = eachindex(mutarray)
+        mutarray[iter] = rand() < rates[iter] ? true : false
+    end
+    nothing
 end
 
 end
