@@ -1,7 +1,7 @@
-import ForwardPopGenSims
+import ForwardPopGenSimulations
 using Base.Test
 
-const fpgs = ForwardPopGenSims
+const fpgs = ForwardPopGenSimulations
 
 gdb = fpgs.GeneDB()
 

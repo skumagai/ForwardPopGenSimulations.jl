@@ -1,4 +1,4 @@
-module ForwardPopGenSims
+module ForwardPopGenSimulations
 
 export Migration,
        GeneDB,
