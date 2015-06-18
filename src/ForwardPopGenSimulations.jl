@@ -40,33 +40,35 @@ type GeneRecord
     ndescs::Int
 
     # id is intentionally left unspecified. That field is specified upon insertion in to GeneDB.
-    function GeneRecord(epoch::Int, state::Int)
-        self = new(epoch, state, Transmission())
-        self.parent = self
-        self.ndescs = 0
-        self
-    end
-    function GeneRecord(epoch::Int, parent::GeneRecord)
-        self = new(epoch, parent.state, Transmission())
-        self.parent = parent
-        self.parent.ndescs += 1
-        self.ndescs = 0
-        self
-    end
-    function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
-        self = new(epoch, state, Mutation())
-        self.parent = parent
-        self.parent.ndescs += 1
-        self.ndescs = 0
-        self
-    end
-    function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
-        self = new(epoch, state, m)
-        self.parent = parent
-        self.parent.ndescs += 1
-        self.ndescs = 0
-        self
-    end
+    GeneRecord(e::Int, s::Int, ev::Union(Transmission, Mutation, Migration)) = new(e, s, ev)
+end
+
+function GeneRecord(epoch::Int, state::Int)
+    self = GeneRecord(epoch, state, Transmission())
+    self.parent = self
+    self.ndescs = 0
+    self
+end
+function GeneRecord(epoch::Int, parent::GeneRecord)
+    self = GeneRecord(epoch, parent.state, Transmission())
+    self.parent = parent
+    self.parent.ndescs += 1
+    self.ndescs = 0
+    self
+end
+function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
+    self = GeneRecord(epoch, state, Mutation())
+    self.parent = parent
+    self.parent.ndescs += 1
+    self.ndescs = 0
+    self
+end
+function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
+    self = GeneRecord(epoch, state, m)
+    self.parent = parent
+    self.parent.ndescs += 1
+    self.ndescs = 0
+    self
 end
 
 const UndefGene = (ug = GeneRecord(0, 0); ug.id = 0; ug)
