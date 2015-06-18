@@ -329,7 +329,7 @@ end
 function selectmutatedsites!(mutarray, rates)
     size(mutarray) == size(rates) || error("Dimension mismatch in a mutation array and rate array.")
     for iter = eachindex(mutarray)
-        mutarray[iter] = rand() < rates[iter] ? true : false
+        mutarray[iter] = rand() < rates[iter]
     end
     nothing
 end
