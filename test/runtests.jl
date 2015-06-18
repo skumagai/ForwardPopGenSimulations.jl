@@ -96,7 +96,7 @@ fpgs.insert!(gdb, fpgs.GeneRecord(2, 1, gdb[1]))
 fpgs.insert!(gdb, fpgs.GeneRecord(3, 1, gdb[2]))
 fpgs.insert!(gdb, fpgs.GeneRecord(3, 1, gdb[2]))
 @test Set(collect(keys(gdb))) == Set([1, 2, 3, 4])
-fpgs.clean!(gdb, [3, 4])
+fpgs.clean!(gdb, 3, 4)
 @test Set(collect(keys(gdb))) == Set([2, 3, 4])
 
 gdb = fpgs.GeneDB()
@@ -105,7 +105,7 @@ fpgs.insert!(gdb, fpgs.GeneRecord(2, 1, gdb[1]))
 fpgs.insert!(gdb, fpgs.GeneRecord(2, 1, gdb[1]))
 fpgs.insert!(gdb, fpgs.GeneRecord(3, 1, gdb[2]))
 fpgs.insert!(gdb, fpgs.GeneRecord(3, 1, gdb[2]))
-fpgs.clean!(gdb, [4, 5])
+fpgs.clean!(gdb, 4, 5)
 @test Set(collect(keys(gdb))) == Set([2, 4, 5])
 
 gdb = fpgs.GeneDB()
@@ -117,7 +117,7 @@ fpgs.insert!(gdb, fpgs.GeneRecord(5, 3, gdb[4]))
 fpgs.insert!(gdb, fpgs.GeneRecord(5, gdb[3]))
 @test Set(collect(keys(gdb))) == Set([1:6;])
 @test fpgs.mrca(gdb, [5, 6]) == gdb[3]
-fpgs.clean!(gdb, [5, 6])
+fpgs.clean!(gdb, 5, 6)
 @test Set(collect(keys(gdb))) == Set([3, 5, 6])
 
 gdb = fpgs.GeneDB()
@@ -125,19 +125,22 @@ fpgs.insert!(gdb, fpgs.GeneRecord(1, 1))
 fpgs.insert!(gdb, fpgs.GeneRecord(2, 2, gdb[1]))
 fpgs.insert!(gdb, fpgs.GeneRecord(3, gdb[2]))
 fpgs.insert!(gdb, fpgs.GeneRecord(4, gdb[3]))
+
+fpgs.insert!(gdb, fpgs.GeneRecord(1, 11))
+fpgs.insert!(gdb, fpgs.GeneRecord(2, 2, gdb[5]))
+fpgs.insert!(gdb, fpgs.GeneRecord(3, gdb[6]))
+fpgs.insert!(gdb, fpgs.GeneRecord(4, gdb[7]))
+
 fpgs.insert!(gdb, fpgs.GeneRecord(5, 3, gdb[4]))
 fpgs.insert!(gdb, fpgs.GeneRecord(5, gdb[3]))
-fpgs.insert!(gdb, fpgs.GeneRecord(1, 11))
-fpgs.insert!(gdb, fpgs.GeneRecord(2, 2, gdb[7]))
-fpgs.insert!(gdb, fpgs.GeneRecord(3, gdb[8]))
-fpgs.insert!(gdb, fpgs.GeneRecord(4, gdb[9]))
-fpgs.insert!(gdb, fpgs.GeneRecord(5, 3, gdb[10]))
-fpgs.insert!(gdb, fpgs.GeneRecord(5, gdb[9]))
+
+fpgs.insert!(gdb, fpgs.GeneRecord(5, 3, gdb[8]))
+fpgs.insert!(gdb, fpgs.GeneRecord(5, gdb[7]))
 @test Set(collect(keys(gdb))) == Set([1:12;])
-@test fpgs.mrca(gdb, [5, 6]) == gdb[3]
-@test fpgs.mrca(gdb, [11, 12]) == gdb[9]
-fpgs.clean!(gdb, [5 11; 6 12])
-@test Set(collect(keys(gdb))) == Set([3, 5, 6, 9, 11, 12])
+@test fpgs.mrca(gdb, [9, 10]) == gdb[3]
+@test fpgs.mrca(gdb, [11, 12]) == gdb[7]
+fpgs.clean!(gdb, 9, 12)
+@test Set(collect(keys(gdb))) == Set([3, 7, 9, 10, 11, 12])
 
 pars = Array{Int}(1)
 fpgs.selectparents!(pars, 10, replace=false)

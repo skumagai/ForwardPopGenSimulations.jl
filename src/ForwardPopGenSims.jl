@@ -36,26 +36,34 @@ type GeneRecord
 
     # Secondary information of lineages: This will be updated during a simulation.
     parent::GeneRecord
+    ndescs::Int
 
     # id is intentionally left unspecified. That field is specified upon insertion in to GeneDB.
     function GeneRecord(epoch::Int, state::Int)
         self = new(epoch, state, Transmission())
         self.parent = self
+        self.ndescs = 0
         self
     end
     function GeneRecord(epoch::Int, parent::GeneRecord)
         self = new(epoch, parent.state, Transmission())
         self.parent = parent
+        self.parent.ndescs += 1
+        self.ndescs = 0
         self
     end
     function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
         self = new(epoch, state, Mutation())
         self.parent = parent
+        self.parent.ndescs += 1
+        self.ndescs = 0
         self
     end
     function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
         self = new(epoch, state, m)
         self.parent = parent
+        self.parent.ndescs += 1
+        self.ndescs = 0
         self
     end
 end
@@ -72,7 +80,13 @@ end
 Base.getindex(gdb::GeneDB, id::Int) = gdb.data[id]
 Base.setindex!(gdb::GeneDB, record::GeneRecord, id::Int) = gdb.data[id] = record
 Base.haskey(gdb::GeneDB, id::Int) = haskey(gdb.data, id)
-Base.delete!(gdb::GeneDB, id::Int) = delete!(gdb.data, id)
+function Base.delete!(gdb::GeneDB, id::Int)
+    # delete GeneRecord from GeneDB only if it has no descendent.
+    parent = gdb[id].parent
+    parent.ndescs -= 1
+    delete!(gdb.data, id)
+end
+
 Base.keys(gdb::GeneDB) = keys(gdb.data)
 
 update!(gdb::GeneDB, id::Int, field::Symbol, value) = setfield!(gdb[id], field, value)
@@ -85,6 +99,7 @@ nextid!(gdb::GeneDB) = (gdb.currentid += 1; gdb.currentid)
 
 function Base.insert!(gdb::GeneDB, record::GeneRecord)
     id = nextid!(gdb)
+    id < record.parent.id && error("Number of record exceeds supported maximum.")
     record.id = id
     haskey(gdb, id) && error("Attempted to insert an existing record.")
     gdb[id] = record
@@ -110,81 +125,138 @@ function hascoalesced(gdb::GeneDB, gids::AbstractArray)
     coalesced
 end
 
-function _clean!(gdb::GeneDB, gids::AbstractArray)
-    cs = Dict{Int, Array{Int, 1}}()
-    # Organisms in yonger generations are guaranteed to have higher ID.
-    # Reverse iteration visits offspring before parents. This makes it possible to construct a familial tree
-    # where parents know offspring.
-    ids = collect(keys(gdb))
+# function _clean!(gdb::GeneDB, gids::AbstractArray)
+#     cs = Dict{Int, Array{Int, 1}}()
+#     # Organisms in yonger generations are guaranteed to have higher ID.
+#     # Reverse iteration visits offspring before parents. This makes it possible to construct a familial tree
+#     # where parents know offspring.
+#     ids = collect(keys(gdb))
+#     sort!(ids, rev=true)
+#     for id in ids
+#         pid = gdb[id].parent.id
+#         id == pid && continue
+#         if haskey(cs, pid)
+#             push!(cs[pid], id)
+#         else
+#             cs[pid] = [id]
+#         end
+#     end
+#
+#     # After the familial tree is built, identify organisms with zoero or one descendants. In case of
+#     # no descendant, an organism is simply removed from the database regardless of its event type (
+#     # Transmission, Mutation, Migration). On the other hand when there is only one offspring, a organism
+#     # gets removed only if its event type is Transmission.
+#     for id in ids
+#         p = gdb[id].parent
+#         pid = p.id
+#         if !haskey(cs, id) && !in(id, gids)
+#             # This organism neither has offspring nor extant.
+#             if id != pid
+#                 deleteat!(cs[pid], findfirst(id))
+#                 length(cs[pid]) == 0 && delete!(cs, pid)
+#             end
+#             drop!(gdb, id)
+#         elseif haskey(cs, id) && length(cs[id]) == 1 && isa(gdb[id].event, Transmission)
+#             c = gdb[cs[id][1]]
+#             if id == pid
+#                 c.parent = c
+#             else
+#                 c.parent = p
+#                 cs[pid][findfirst(cs[pid], id)] = cs[id][1]
+#             end
+#             delete!(cs, id)
+#             drop!(gdb, id)
+#         end
+#     end
+# end
+#
+# function _trimancestors!{T}(gdb::GeneDB, gids::AbstractArray{T, 1})
+#     # Up to this point, Mutation and Migration nodes ancestoral to MRCA remain in the database.
+#     # As the last step, remove those nodes.
+#     ca = mrca(gdb, gids)
+#     if ca != ca.parent
+#         anc = ca.parent
+#         ca.parent = ca
+#         while true
+#             old = anc
+#             anc = anc.parent
+#             drop!(gdb, old)
+#             old == anc && break
+#         end
+#     end
+#     nothing
+# end
+#
+# function clean!{T}(gdb::GeneDB, gids::AbstractArray{T, 1})
+#     _clean!(gdb, gids)
+#     _trimancestors!(gdb, gids)
+#     nothing
+# end
+
+function registerdescendant!(db, pid, did)
+    if haskey(db, pid)
+        push!(db[pid], did)
+    else
+        db[pid] = [did]
+    end
+end
+
+function clean!{T}(gdb::GeneDB, cmin::T, cmax::T)
+    ids = filter(x-> x < cmin || x > cmax, collect(keys(gdb)))
     sort!(ids, rev=true)
-    for id in ids
-        pid = gdb[id].parent.id
-        id == pid && continue
-        if haskey(cs, pid)
-            push!(cs[pid], id)
-        else
-            cs[pid] = [id]
-        end
+    descs = Dict{T,Array{T,1}}()
+
+    for id in cmin:cmax
+        registerdescendant!(descs, gdb[id].parent.id, id)
     end
 
-    # After the familial tree is built, identify organisms with zoero or one descendants. In case of
-    # no descendant, an organism is simply removed from the database regardless of its event type (
-    # Transmission, Mutation, Migration). On the other hand when there is only one offspring, a organism
-    # gets removed only if its event type is Transmission.
     for id in ids
-        p = gdb[id].parent
-        pid = p.id
-        if !haskey(cs, id) && !in(id, gids)
-            # This organism neither has offspring nor extant.
-            if id != pid
-                deleteat!(cs[pid], findfirst(id))
-                length(cs[pid]) == 0 && delete!(cs, pid)
-            end
+        org = gdb[id]
+        parent = org.parent
+        ndescs = org.ndescs
+        if ndescs == 0
+            org == parent || (parent.ndescs -= 1)
+            update!(gdb, org, :parent, org)
             drop!(gdb, id)
-        elseif haskey(cs, id) && length(cs[id]) == 1 && isa(gdb[id].event, Transmission)
-            c = gdb[cs[id][1]]
-            if id == pid
-                c.parent = c
+        elseif ndescs == 1 && isa(org.event, Transmission)
+            length(descs[id]) == 1 || error()
+            desc = gdb[descs[id][1]]
+            if org == parent
+                update!(gdb, desc, :parent, desc)
             else
-                c.parent = p
-                cs[pid][findfirst(cs[pid], id)] = cs[id][1]
+                update!(gdb, desc, :parent, parent)
+                registerdescendant!(descs, parent.id, desc.id)
             end
-            delete!(cs, id)
+            delete!(descs, id)
             drop!(gdb, id)
+        else
+            registerdescendant!(descs, parent.id, id)
+        end
+    end
+
+    reverse!(ids)
+    for id in ids
+        haskey(gdb, id) || continue
+        org = gdb[id]
+        parent = org.parent
+        while parent == org && org.ndescs == 1
+            length(descs[org.id]) == 1 || error()
+            desc = gdb[descs[org.id][1]]
+            desc.parent = desc
+            drop!(gdb, org.id)
+            parent = org
+            org = desc
         end
     end
 end
 
-function _trimancestors!{T}(gdb::GeneDB, gids::AbstractArray{T, 1})
-    # Up to this point, Mutation and Migration nodes ancestoral to MRCA remain in the database.
-    # As the last step, remove those nodes.
-    ca = mrca(gdb, gids)
-    if ca != ca.parent
-        anc = ca.parent
-        ca.parent = ca
-        while true
-            old = anc
-            anc = anc.parent
-            drop!(gdb, old)
-            old == anc && break
-        end
-    end
-    nothing
-end
-
-function clean!{T}(gdb::GeneDB, gids::AbstractArray{T, 1})
-    _clean!(gdb, gids)
-    _trimancestors!(gdb, gids)
-    nothing
-end
-
-function clean!{T}(gdb::GeneDB, gids::AbstractArray{T, 2})
-    _clean!(gdb, gids)
-    for locus = 1:size(gids, 2)
-        _trimancestors!(gdb, sub(gids, :, locus))
-    end
-    nothing
-end
+# function clean!{T}(gdb::GeneDB, gids::AbstractArray{T, 2})
+#     _clean!(gdb, gids)
+#     for locus = 1:size(gids, 2)
+#         _trimancestors!(gdb, sub(gids, :, locus))
+#     end
+#     nothing
+# end
 
 function history(gdb::GeneDB, idx::Int)
     val = [idx]
