@@ -100,9 +100,9 @@ nextid!(gdb::GeneDB) = (gdb.currentid += 1; gdb.currentid)
 
 function Base.insert!(gdb::GeneDB, record::GeneRecord)
     id = nextid!(gdb)
-    id < record.parent.id && error("Number of record exceeds supported maximum.")
     record.id = id
     haskey(gdb, id) && error("Attempted to insert an existing record.")
+    id < record.parent.id && error("Number of record exceeds supported maximum.")
     gdb[id] = record
     id
 end
