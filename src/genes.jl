@@ -1,10 +1,7 @@
 export Migration,
        GeneDB,
        GeneRecord,
-       UndefGene,
-
-       transmit!,
-       clean!
+       UndefGene
 
 immutable Transmission end
 immutable Mutation end

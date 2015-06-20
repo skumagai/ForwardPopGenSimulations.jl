@@ -3,30 +3,23 @@ using Base.Test
 
 const fpgs = ForwardPopGenSimulations
 
-gdb = GeneDB()
-
-type StateCounter
-    state::Int
-end
-
-nextstate!(s::StateCounter) = (s.state += 1; s.state)
-
-sc = StateCounter(0)
+core = BasicData()
+gdb = db(core)
 
 for _ = 1:2
-    insert!(gdb, GeneRecord(1, nextstate!(sc)))
+    insert!(gdb, GeneRecord(1, nextstate!(core)))
 end
 for i = 1:2, _ = 1:2
-    insert!(gdb, GeneRecord(2, nextstate!(sc), gdb[i]))
+    insert!(gdb, GeneRecord(2, nextstate!(core), gdb[i]))
 end
 for i = 3:6, _ = 1:2
-    insert!(gdb, GeneRecord(3, nextstate!(sc), gdb[i]))
+    insert!(gdb, GeneRecord(3, nextstate!(core), gdb[i]))
 end
 @test gdb.currentid == 14
-@test sc.state == 14
+@test core.state == 14
 insert!(gdb, GeneRecord(4, gdb[1]))
 @test gdb.currentid == 15
-@test sc.state == 14
+@test core.state == 14
 @test Set(keys(gdb)) == Set(1:15)
 for i = 1:15
     @test haskey(gdb, i) == true
@@ -89,9 +82,9 @@ ds = distances(gdb, gids)
 
 @test mrca(gdb, gids).epoch == 1
 
-gdb = GeneDB()
-sc = StateCounter(0)
-insert!(gdb, GeneRecord(1, nextstate!(sc)))
+core = BasicData()
+gdb = db(core)
+insert!(gdb, GeneRecord(1, nextstate!(core)))
 insert!(gdb, GeneRecord(2, 1, gdb[1]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
@@ -100,7 +93,7 @@ clean!(gdb, 3, 4)
 @test Set(collect(keys(gdb))) == Set([2, 3, 4])
 
 gdb = GeneDB()
-insert!(gdb, GeneRecord(1, nextstate!(sc)))
+insert!(gdb, GeneRecord(1, nextstate!(core)))
 insert!(gdb, GeneRecord(2, 1, gdb[1]))
 insert!(gdb, GeneRecord(2, 1, gdb[1]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
@@ -182,3 +175,18 @@ selectmutatedsites!(mutarr, rates)
 @test value(XChromosome) == 2
 @test value(YChromosome) == 3
 @test value(Mitochondrion) == 4
+
+core = BasicData()
+for i = 1:10
+    @test nextstate!(core) == i
+    @test core.state == i
+end
+settmax!(core, 10)
+@test core.tmax == 10
+gdb = db(core)
+@test isa(gdb, GeneDB)
+@test time(core) == 0
+for (i, t) in enumerate(core)
+    @test i == t
+end
+@test time(core) == 10
