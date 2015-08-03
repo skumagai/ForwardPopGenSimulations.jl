@@ -31,7 +31,7 @@ end
 
 function history(gdb::GeneDB, idx::Int)
     val = [idx]
-    while gdb[idx] != gdb[idx].parent
+    while gdb[idx].parent !== UndefGene
         idx = gdb[idx].parent.id
         push!(val, idx)
     end

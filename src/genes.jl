@@ -28,12 +28,18 @@ type GeneRecord
     GeneRecord(e::Int, s::Int, ev::Union(Transmission, Mutation, Migration)) = new(e, s, ev)
 end
 
+# a gene of unknown identity. This is also used to represent a parent of roots.
+const UndefGene = GeneRecord(0, 0, Transmission())
+
+## constructors
+# initial genes
 function GeneRecord(epoch::Int, state::Int)
     self = GeneRecord(epoch, state, Transmission())
-    self.parent = self
+    self.parent = UndefGene
     self.ndescs = 0
     self
 end
+# transmission of a gene without mutation
 function GeneRecord(epoch::Int, parent::GeneRecord)
     self = GeneRecord(epoch, parent.state, Transmission())
     self.parent = parent
@@ -41,6 +47,7 @@ function GeneRecord(epoch::Int, parent::GeneRecord)
     self.ndescs = 0
     self
 end
+# transmission of a gene with mutation
 function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
     self = GeneRecord(epoch, state, Mutation())
     self.parent = parent
@@ -48,6 +55,7 @@ function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
     self.ndescs = 0
     self
 end
+# migration of a gene
 function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
     self = GeneRecord(epoch, state, m)
     self.parent = parent
@@ -56,13 +64,11 @@ function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
     self
 end
 
-const UndefGene = (ug = GeneRecord(0, 0); ug.id = 0; ug)
-
 type GeneDB
     currentid::Int
     data::Dict{Int, GeneRecord}
 
-    GeneDB() = new(0, Dict{Int, GeneRecord}())
+    GeneDB() = new(0, Dict{Int, GeneRecord}(0 => UndefGene))
 end
 
 Base.getindex(gdb::GeneDB, id::Int) = gdb.data[id]
@@ -110,6 +116,8 @@ end
 function clean!{T}(gdb::GeneDB, cmin::T, cmax::T)
     ids = filter(x-> x < cmin || x > cmax, collect(keys(gdb)))
     sort!(ids, rev=true)
+    # remove an element for UndefGene.
+    pop!(ids)
     descs = Dict{T,Array{T,1}}()
 
     for id in cmin:cmax
@@ -121,18 +129,15 @@ function clean!{T}(gdb::GeneDB, cmin::T, cmax::T)
         parent = org.parent
         ndescs = org.ndescs
         if ndescs == 0
-            org == parent || (parent.ndescs -= 1)
+            parent === UndefGene || (parent.ndescs -= 1)
             update!(gdb, org, :parent, org)
             drop!(gdb, id)
         elseif ndescs == 1 && isa(org.event, Transmission)
             length(descs[id]) == 1 || error()
             desc = gdb[descs[id][1]]
-            if org == parent
-                update!(gdb, desc, :parent, desc)
-            else
-                update!(gdb, desc, :parent, parent)
-                registerdescendant!(descs, parent.id, desc.id)
-            end
+            update!(gdb, desc, :parent, parent)
+            parent === UndefGene || registerdescendant!(descs, parent.id, desc.id)
+
             delete!(descs, id)
             drop!(gdb, id)
         else
@@ -145,10 +150,10 @@ function clean!{T}(gdb::GeneDB, cmin::T, cmax::T)
         haskey(gdb, id) || continue
         org = gdb[id]
         parent = org.parent
-        while parent == org && org.ndescs == 1
+        while parent === UndefGene && org.ndescs == 1
             length(descs[org.id]) == 1 || error()
             desc = gdb[descs[org.id][1]]
-            desc.parent = desc
+            desc.parent = parent
             drop!(gdb, org.id)
             parent = org
             org = desc

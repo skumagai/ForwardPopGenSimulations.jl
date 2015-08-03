@@ -20,8 +20,8 @@ end
 insert!(gdb, GeneRecord(4, gdb[1]))
 @test gdb.currentid == 15
 @test core.state == 14
-@test Set(keys(gdb)) == Set(1:15)
-for i = 1:15
+@test Set(keys(gdb)) == Set(0:15)
+for i = 0:15
     @test haskey(gdb, i) == true
 end
 @test haskey(gdb, 16) == false
@@ -88,9 +88,9 @@ insert!(gdb, GeneRecord(1, nextstate!(core)))
 insert!(gdb, GeneRecord(2, 1, gdb[1]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
-@test Set(collect(keys(gdb))) == Set([1, 2, 3, 4])
+@test Set(collect(keys(gdb))) == Set([0, 1, 2, 3, 4])
 clean!(gdb, 3, 4)
-@test Set(collect(keys(gdb))) == Set([2, 3, 4])
+@test Set(collect(keys(gdb))) == Set([0, 2, 3, 4])
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, nextstate!(core)))
@@ -99,7 +99,7 @@ insert!(gdb, GeneRecord(2, 1, gdb[1]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
 insert!(gdb, GeneRecord(3, 1, gdb[2]))
 clean!(gdb, 4, 5)
-@test Set(collect(keys(gdb))) == Set([2, 4, 5])
+@test Set(collect(keys(gdb))) == Set([0, 2, 4, 5])
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, 1))
@@ -108,10 +108,10 @@ insert!(gdb, GeneRecord(3, gdb[2]))
 insert!(gdb, GeneRecord(4, gdb[3]))
 insert!(gdb, GeneRecord(5, 3, gdb[4]))
 insert!(gdb, GeneRecord(5, gdb[3]))
-@test Set(collect(keys(gdb))) == Set([1:6;])
+@test Set(collect(keys(gdb))) == Set([0:6;])
 @test mrca(gdb, [5, 6]) == gdb[3]
 clean!(gdb, 5, 6)
-@test Set(collect(keys(gdb))) == Set([3, 5, 6])
+@test Set(collect(keys(gdb))) == Set([0, 3, 5, 6])
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, 1))
@@ -129,11 +129,11 @@ insert!(gdb, GeneRecord(5, gdb[3]))
 
 insert!(gdb, GeneRecord(5, 3, gdb[8]))
 insert!(gdb, GeneRecord(5, gdb[7]))
-@test Set(collect(keys(gdb))) == Set([1:12;])
+@test Set(collect(keys(gdb))) == Set([0:12;])
 @test mrca(gdb, [9, 10]) == gdb[3]
 @test mrca(gdb, [11, 12]) == gdb[7]
 clean!(gdb, 9, 12)
-@test Set(collect(keys(gdb))) == Set([3, 7, 9, 10, 11, 12])
+@test Set(collect(keys(gdb))) == Set([0, 3, 7, 9, 10, 11, 12])
 
 pars = Array{Int}(1)
 selectparents!(pars, 10, replace=false)
