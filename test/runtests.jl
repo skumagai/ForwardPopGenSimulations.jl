@@ -190,3 +190,20 @@ for (i, t) in enumerate(core)
     @test i == t
 end
 @test time(core) == 10
+
+core = BasicData()
+gdb = db(core)
+transmit!(gdb, 1, 0, state=1)
+transmit!(gdb, 2, 1, state=2, from=1, to=2)
+transmit!(gdb, 3, 3)
+transmit!(gdb, 4, 4, state=3)
+@test haskey(gdb, 2) == true
+@test haskey(gdb, 3) == true
+@test gdb[2].event == fpgs.Migration(1, 2)
+@test gdb[2].state == 1
+@test gdb[3].event == fpgs.Mutation()
+@test gdb[3].state == 2
+@test gdb[4].event == fpgs.Transmission()
+@test gdb[4].state == 2
+@test gdb[5].event == fpgs.Mutation()
+@test gdb[5].state == 3

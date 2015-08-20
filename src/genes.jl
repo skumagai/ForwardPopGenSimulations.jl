@@ -1,5 +1,4 @@
-export Migration,
-       GeneDB,
+export GeneDB,
        GeneRecord,
        UndefGene
 
@@ -56,8 +55,8 @@ function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
     self
 end
 # migration of a gene
-function GeneRecord(epoch::Int, state::Int, m::Migration, parent::GeneRecord)
-    self = GeneRecord(epoch, state, m)
+function GeneRecord(epoch::Int, m::Migration, parent::GeneRecord)
+    self = GeneRecord(epoch, parent.state, m)
     self.parent = parent
     self.parent.ndescs += 1
     self.ndescs = 0
@@ -100,10 +99,16 @@ function Base.insert!(gdb::GeneDB, record::GeneRecord)
     id
 end
 
-# Without mutation
-transmit!(gdb::GeneDB, epoch::Int, pid::Int) = insert!(gdb, GeneRecord(epoch, gdb[pid]))
-# With mutation
-transmit!(gdb::GeneDB, epoch::Int, state::Int, pid::Int) = insert!(gdb, GeneRecord(epoch, state, gdb[pid]))
+function transmit!(gdb::GeneDB, epoch::Int, pid::Int; state=0, from=0, to=0)
+    if from != to && from > 0 && to > 0
+        pid = insert!(gdb, GeneRecord(epoch, Migration(from, to), gdb[pid]))
+    end
+    if state > 0
+        insert!(gdb, GeneRecord(epoch, state, gdb[pid]))
+    else
+        insert!(gdb, GeneRecord(epoch, gdb[pid]))
+    end
+end
 
 function registerdescendant!(db, pid, did)
     if haskey(db, pid)
