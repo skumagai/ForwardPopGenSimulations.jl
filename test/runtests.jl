@@ -5,15 +5,56 @@ const fpgs = ForwardPopGenSimulations
 
 core = BasicData()
 gdb = db(core)
+transmit!(gdb, 1, 0)
+transmit!(gdb, 2, 1)
+transmit!(gdb, 3, 2, state=2)
+transmit!(gdb, 4, 3, src=1, dest=2)
+transmit!(gdb, 5, 4, state=3, src=2, dest=1)
+transmit!(gdb, 6, 5, state=-1)
+transmit!(gdb, 7, 6, src=-1, dest=2)
+transmit!(gdb, 8, 7, src=1, dest=-2)
+transmit!(gdb, 9, 8, state=-1, src=2, dest=1)
+transmit!(gdb, 10, 9, state=2, src=-2, dest=1)
+transmit!(gdb, 11, 10, state=3, src=2, dest=-1)
+transmit!(gdb, 12, 11, state=-1, src=-2, dest=-1)
+transmit!(gdb, 13, 12, state=3)
+transmit!
+@test gdb[1].event == fpgs.Transmission()
+@test gdb[1].state == 0
+@test gdb[2].event == fpgs.Transmission()
+@test gdb[2].state == 0
+@test gdb[3].event == fpgs.Mutation()
+@test gdb[3].state == 2
+@test gdb[4].event == fpgs.Migration(1, 2)
+@test gdb[4].state == 2
+@test gdb[5].event == fpgs.MigrationAndMutation(2, 1)
+@test gdb[5].state == 3
+@test gdb[6].event == fpgs.Transmission()
+@test gdb[6].state == 3
+@test gdb[7].event == fpgs.Transmission()
+@test gdb[7].state == 3
+@test gdb[8].event == fpgs.Transmission()
+@test gdb[8].state == 3
+@test gdb[9].event == fpgs.Migration(2, 1)
+@test gdb[9].state == 3
+@test gdb[10].event == fpgs.Mutation()
+@test gdb[10].state == 2
+@test gdb[11].event == fpgs.Mutation()
+@test gdb[11].state == 3
+@test gdb[12].event == fpgs.Transmission()
+@test gdb[12].state == 3
+
+core = BasicData()
+gdb = db(core)
 
 for _ = 1:2
     insert!(gdb, GeneRecord(1, nextstate!(core)))
 end
 for i = 1:2, _ = 1:2
-    insert!(gdb, GeneRecord(2, nextstate!(core), gdb[i]))
+    insert!(gdb, GeneRecord(2, gdb[i], state=nextstate!(core)))
 end
 for i = 3:6, _ = 1:2
-    insert!(gdb, GeneRecord(3, nextstate!(core), gdb[i]))
+    insert!(gdb, GeneRecord(3, gdb[i], state=nextstate!(core)))
 end
 @test gdb.currentid == 14
 @test core.state == 14
@@ -85,28 +126,28 @@ ds = distances(gdb, gids)
 core = BasicData()
 gdb = db(core)
 insert!(gdb, GeneRecord(1, nextstate!(core)))
-insert!(gdb, GeneRecord(2, 1, gdb[1]))
-insert!(gdb, GeneRecord(3, 1, gdb[2]))
-insert!(gdb, GeneRecord(3, 1, gdb[2]))
+insert!(gdb, GeneRecord(2, gdb[1], state=1))
+insert!(gdb, GeneRecord(3, gdb[2], state=1))
+insert!(gdb, GeneRecord(3, gdb[2], state=1))
 @test Set(collect(keys(gdb))) == Set([0, 1, 2, 3, 4])
 clean!(gdb, 3, 4)
 @test Set(collect(keys(gdb))) == Set([0, 2, 3, 4])
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, nextstate!(core)))
-insert!(gdb, GeneRecord(2, 1, gdb[1]))
-insert!(gdb, GeneRecord(2, 1, gdb[1]))
-insert!(gdb, GeneRecord(3, 1, gdb[2]))
-insert!(gdb, GeneRecord(3, 1, gdb[2]))
+insert!(gdb, GeneRecord(2, gdb[1], state=1))
+insert!(gdb, GeneRecord(2, gdb[1], state=1))
+insert!(gdb, GeneRecord(3, gdb[2], state=1))
+insert!(gdb, GeneRecord(3, gdb[2], state=1))
 clean!(gdb, 4, 5)
 @test Set(collect(keys(gdb))) == Set([0, 2, 4, 5])
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, 1))
-insert!(gdb, GeneRecord(2, 2, gdb[1]))
+insert!(gdb, GeneRecord(2, gdb[1], state=2))
 insert!(gdb, GeneRecord(3, gdb[2]))
 insert!(gdb, GeneRecord(4, gdb[3]))
-insert!(gdb, GeneRecord(5, 3, gdb[4]))
+insert!(gdb, GeneRecord(5, gdb[4], state=3))
 insert!(gdb, GeneRecord(5, gdb[3]))
 @test Set(collect(keys(gdb))) == Set([0:6;])
 @test mrca(gdb, [5, 6]) == gdb[3]
@@ -115,19 +156,19 @@ clean!(gdb, 5, 6)
 
 gdb = GeneDB()
 insert!(gdb, GeneRecord(1, 1))
-insert!(gdb, GeneRecord(2, 2, gdb[1]))
+insert!(gdb, GeneRecord(2, gdb[1], state=2))
 insert!(gdb, GeneRecord(3, gdb[2]))
 insert!(gdb, GeneRecord(4, gdb[3]))
 
 insert!(gdb, GeneRecord(1, 11))
-insert!(gdb, GeneRecord(2, 2, gdb[5]))
+insert!(gdb, GeneRecord(2, gdb[5], state=2))
 insert!(gdb, GeneRecord(3, gdb[6]))
 insert!(gdb, GeneRecord(4, gdb[7]))
 
-insert!(gdb, GeneRecord(5, 3, gdb[4]))
+insert!(gdb, GeneRecord(5, gdb[4], state=3))
 insert!(gdb, GeneRecord(5, gdb[3]))
 
-insert!(gdb, GeneRecord(5, 3, gdb[8]))
+insert!(gdb, GeneRecord(5, gdb[8], state=3))
 insert!(gdb, GeneRecord(5, gdb[7]))
 @test Set(collect(keys(gdb))) == Set([0:12;])
 @test mrca(gdb, [9, 10]) == gdb[3]
@@ -191,19 +232,3 @@ for (i, t) in enumerate(core)
 end
 @test time(core) == 10
 
-core = BasicData()
-gdb = db(core)
-transmit!(gdb, 1, 0, state=1)
-transmit!(gdb, 2, 1, state=2, from=1, to=2)
-transmit!(gdb, 3, 3)
-transmit!(gdb, 4, 4, state=3)
-@test haskey(gdb, 2) == true
-@test haskey(gdb, 3) == true
-@test gdb[2].event == fpgs.Migration(1, 2)
-@test gdb[2].state == 1
-@test gdb[3].event == fpgs.Mutation()
-@test gdb[3].state == 2
-@test gdb[4].event == fpgs.Transmission()
-@test gdb[4].state == 2
-@test gdb[5].event == fpgs.Mutation()
-@test gdb[5].state == 3

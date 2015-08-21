@@ -8,12 +8,16 @@ immutable Migration
     from::Int32
     to::Int32
 end
+immutable MigrationAndMutation
+    from::Int32
+    to::Int32
+end
 
 type GeneRecord
     # Primary information of lineages: Immutable throughout a simulation.
     epoch::Int
     state::Int
-    event::Union(Transmission, Mutation, Migration)
+    event::Union(Transmission, Mutation, Migration, MigrationAndMutation)
     # id = 0 is a special type that the gene does not appear explicitly in a simulation.
     # In other words, id = 0 indicates the identity of a gene is unknown, so I can't say
     # gene(id = 0) == gene(id = 0).
@@ -24,7 +28,10 @@ type GeneRecord
     ndescs::Int
 
     # id is intentionally left unspecified. That field is specified upon insertion in to GeneDB.
-    GeneRecord(e::Int, s::Int, ev::Union(Transmission, Mutation, Migration)) = new(e, s, ev)
+    GeneRecord(
+        e::Int,
+        s::Int,
+        ev::Union(Transmission, Mutation, Migration, MigrationAndMutation)) = new(e, s, ev)
 end
 
 # a gene of unknown identity. This is also used to represent a parent of roots.
@@ -38,25 +45,22 @@ function GeneRecord(epoch::Int, state::Int)
     self.ndescs = 0
     self
 end
-# transmission of a gene without mutation
-function GeneRecord(epoch::Int, parent::GeneRecord)
-    self = GeneRecord(epoch, parent.state, Transmission())
-    self.parent = parent
-    self.parent.ndescs += 1
-    self.ndescs = 0
-    self
-end
-# transmission of a gene with mutation
-function GeneRecord(epoch::Int, state::Int, parent::GeneRecord)
-    self = GeneRecord(epoch, state, Mutation())
-    self.parent = parent
-    self.parent.ndescs += 1
-    self.ndescs = 0
-    self
-end
-# migration of a gene
-function GeneRecord(epoch::Int, m::Migration, parent::GeneRecord)
-    self = GeneRecord(epoch, parent.state, m)
+
+# anything else
+function GeneRecord(epoch::Int, parent::GeneRecord; state=-1, src=-1, dest=-1)
+    if state <= 0 || state == parent.state
+        if src <= 0 || dest <= 0
+            self = GeneRecord(epoch, parent.state, Transmission())
+        else
+            self = GeneRecord(epoch, parent.state, Migration(src, dest))
+        end
+    else # state is different from its parent's.
+        if src <= 0 || dest <= 0
+            self = GeneRecord(epoch, state, Mutation())
+        else
+            self = GeneRecord(epoch, state, MigrationAndMutation(src, dest))
+        end
+    end
     self.parent = parent
     self.parent.ndescs += 1
     self.ndescs = 0
@@ -99,15 +103,8 @@ function Base.insert!(gdb::GeneDB, record::GeneRecord)
     id
 end
 
-function transmit!(gdb::GeneDB, epoch::Int, pid::Int; state=0, from=0, to=0)
-    if from != to && from > 0 && to > 0
-        pid = insert!(gdb, GeneRecord(epoch, Migration(from, to), gdb[pid]))
-    end
-    if state > 0
-        insert!(gdb, GeneRecord(epoch, state, gdb[pid]))
-    else
-        insert!(gdb, GeneRecord(epoch, gdb[pid]))
-    end
+function transmit!(gdb::GeneDB, epoch::Int, pid::Int; state=-1, src=-1, dest=-1)
+    pid = insert!(gdb, GeneRecord(epoch, gdb[pid], state=state, src=src, dest=dest))
 end
 
 function registerdescendant!(db, pid, did)
