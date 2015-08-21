@@ -2,13 +2,14 @@ export GeneDB,
        GeneRecord,
        UndefGene
 
-immutable Transmission end
-immutable Mutation end
-immutable Migration
+abstract AbstractEvent
+immutable Transmission <: AbstractEvent end
+immutable Mutation <: AbstractEvent end
+immutable Migration <: AbstractEvent
     from::Int32
     to::Int32
 end
-immutable MigrationAndMutation
+immutable MigrationAndMutation <: AbstractEvent
     from::Int32
     to::Int32
 end
@@ -17,7 +18,7 @@ type GeneRecord
     # Primary information of lineages: Immutable throughout a simulation.
     epoch::Int
     state::Int
-    event::Union(Transmission, Mutation, Migration, MigrationAndMutation)
+    event::AbstractEvent
     # id = 0 is a special type that the gene does not appear explicitly in a simulation.
     # In other words, id = 0 indicates the identity of a gene is unknown, so I can't say
     # gene(id = 0) == gene(id = 0).
@@ -31,7 +32,7 @@ type GeneRecord
     GeneRecord(
         e::Int,
         s::Int,
-        ev::Union(Transmission, Mutation, Migration, MigrationAndMutation)) = new(e, s, ev)
+        ev::AbstractEvent) = new(e, s, ev)
 end
 
 # a gene of unknown identity. This is also used to represent a parent of roots.
