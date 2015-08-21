@@ -50,13 +50,13 @@ end
 # anything else
 function GeneRecord(epoch::Int, parent::GeneRecord; state=-1, src=-1, dest=-1)
     if state <= 0 || state == parent.state
-        if src <= 0 || dest <= 0
+        if src <= 0 || dest <= 0 || src == dest
             self = GeneRecord(epoch, parent.state, Transmission())
         else
             self = GeneRecord(epoch, parent.state, Migration(src, dest))
         end
     else # state is different from its parent's.
-        if src <= 0 || dest <= 0
+        if src <= 0 || dest <= 0 || src == dest
             self = GeneRecord(epoch, state, Mutation())
         else
             self = GeneRecord(epoch, state, MigrationAndMutation(src, dest))

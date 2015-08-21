@@ -18,7 +18,8 @@ transmit!(gdb, 10, 9, state=2, src=-2, dest=1)
 transmit!(gdb, 11, 10, state=3, src=2, dest=-1)
 transmit!(gdb, 12, 11, state=-1, src=-2, dest=-1)
 transmit!(gdb, 13, 12, state=3)
-transmit!
+transmit!(gdb, 14, 13, src=1, dest=1)
+transmit!(gdb, 15, 14, state=4, src=1, dest=1)
 @test gdb[1].event == fpgs.Transmission()
 @test gdb[1].state == 0
 @test gdb[2].event == fpgs.Transmission()
@@ -43,6 +44,12 @@ transmit!
 @test gdb[11].state == 3
 @test gdb[12].event == fpgs.Transmission()
 @test gdb[12].state == 3
+@test gdb[13].event == fpgs.Transmission()
+@test gdb[13].state == 3
+@test gdb[14].event == fpgs.Transmission()
+@test gdb[14].state == 3
+@test gdb[15].event == fpgs.Mutation()
+@test gdb[15].state == 4
 
 core = BasicData()
 gdb = db(core)
