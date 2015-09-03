@@ -14,6 +14,7 @@ include("chromosomes.jl")
 include("sexes.jl")
 include("genes.jl")
 include("basicdata.jl")
+include("populations.jl")
 
 isidbystate(gdb::GeneDB, id1::Int, id2::Int) = gdb.data[id1].state == gdb.data[id2].state
 

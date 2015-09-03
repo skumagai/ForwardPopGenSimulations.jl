@@ -239,3 +239,131 @@ for (i, t) in enumerate(core)
 end
 @test time(core) == 10
 
+# tests for populations.jl
+pop = Population(5, 3, 2)
+core = BasicData()
+@test length(pop.data) == 30
+@test nloci(pop) == 3
+@test ploidy(pop) == 2
+@test length(pop) == 5
+@test eachindex(pop) == 1:30
+@test offset(pop) == Int[0]
+@test offset(pop, 1) == 0
+
+initialize!(core, pop)
+@test pop.data == [1:30;]
+@test core.state == 30
+for i in eachindex(pop)
+    @test pop[i] == i
+end
+i = 1
+for org in 1:5, locus = 1:3, chr = 1:2
+    @test pop[org, locus, chr] == i
+    pop[org, locus, chr] = 100 + i
+    @test pop[org, locus, chr] == 100 + i
+    i += 1
+end
+
+for i = 31:130
+    transmit!(db(core), 10, 1, state=nextstate!(core))
+    @test db(core)[i].state == i
+end
+clean!(db(core), 101, 130)
+
+core = reinitialize!(core, pop)
+@test length(pop.data) == 30
+@test nloci(pop) == 3
+@test ploidy(pop) == 2
+@test length(pop) == 5
+@test eachindex(pop) == 1:30
+@test offset(pop) == Int[0]
+@test offset(pop, 1) == 0
+i = 1
+for org in 1:5, locus = 1:3, chr = 1:2
+    @test pop[org, locus, chr] == i
+    i += 1
+end
+for i = 1:30
+    db(core)[i].state == i
+end
+
+pop = Population([2, 2], 2, 2)
+core = BasicData()
+@test length(pop.data) == 16
+@test nloci(pop) == 2
+@test ploidy(pop) == 2
+@test length(pop) == 4
+@test eachindex(pop) == 1:16
+@test offset(pop) == Int[0, 8]
+@test offset(pop, 1) == 0
+@test offset(pop, 2) == 8
+
+initialize!(core, pop)
+@test pop.data == [1:16;]
+@test core.state == 16
+for i in eachindex(pop)
+    @test pop[i] == i
+end
+i = 1
+for deme = 1:2, org in 1:2, locus = 1:2, chr = 1:2
+    @test pop[org, locus, chr, deme=deme] == i
+    pop[org, locus, chr, deme] = 50 + i
+    @test pop[org, locus, chr, deme=deme] == 50 + i
+    i += 1
+end
+
+for i = 17:66
+    transmit!(db(core), 10, 1, state=nextstate!(core))
+    @test db(core)[i].state == i
+end
+clean!(db(core), 51, 66)
+
+core = reinitialize!(core, pop)
+@test length(pop.data) == 16
+@test nloci(pop) == 2
+@test ploidy(pop) == 2
+@test length(pop) == 4
+@test eachindex(pop) == 1:16
+@test offset(pop) == Int[0, 8]
+@test offset(pop, 1) == 0
+@test offset(pop, 2) == 8
+i = 1
+for deme =1:2, org = 1:2, locus = 1:2, chr = 1:2
+    @test pop[org, locus, chr, deme=deme] == i
+    i += 1
+end
+for i = 1:16
+    db(core)[i].state == i
+end
+
+popf = Population(2, 4, 2)
+core = BasicData()
+initialize!(core, [Autosome, XChromosome, YChromosome, Mitochondrion], (popf, Female))
+@test popf.data == [1, 2, 3, 4, 0, 0, 5, 0, 6, 7, 8, 9, 0, 0, 10, 0]
+
+popm = Population(2, 4, 2)
+core = BasicData()
+initialize!(core, [Autosome, XChromosome, YChromosome, Mitochondrion], (popm, Male))
+@test popm.data == [1, 2, 3, 0, 0, 4, 0, 0, 5, 6, 7, 0, 0, 8, 0, 0]
+
+data = Array{Int}(8)
+listgenes!(data, 1, popf)
+@test data[1:4] == [1, 2, 6, 7]
+listgenes!(data, 2, popf)
+@test data[1:4] == [3, 4, 8, 9]
+listgenes!(data, 4, popf)
+@test data[1:2] == [5, 10]
+listgenes!(data, 1, popm)
+@test data[1:4] == [1, 2, 5, 6]
+listgenes!(data, 2, popm)
+@test data[1:2] == [3, 7]
+listgenes!(data, 3, popm)
+@test data[1:2] == [4, 8]
+listgenes!(data, 1, (popf, Female), (popm, Male))
+@test data[1:8] == [1, 2, 6, 7, 1, 2, 5, 6]
+listgenes!(data, 2, (popf, Female), (popm, Male))
+@test data[1:6] == [3, 4, 8, 9, 3, 7]
+listgenes!(data, 3, (popf, Female), (popm, Male))
+@test data[1:2] == [4, 8]
+listgenes!(data, 4, (popf, Female), (popm, Male))
+@test data[1:2] == [5, 10]
