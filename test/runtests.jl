@@ -336,34 +336,42 @@ for i = 1:16
     db(core)[i].state == i
 end
 
-popf = Population(2, 4, 2)
+pop1 = Population(2, 2, 2)
+pop2 = Population(3, 2, 2)
 core = BasicData()
-initialize!(core, [Autosome, XChromosome, YChromosome, Mitochondrion], (popf, Female))
-@test popf.data == [1, 2, 3, 4, 0, 0, 5, 0, 6, 7, 8, 9, 0, 0, 10, 0]
+initialize!(core, [YChromosome, Mitochondrion], pop1, Female)
+initialize!(core, [YChromosome, Mitochondrion], pop2, Male)
+@test pop1.data == [0, 0, 1, 0, 0, 0, 2, 0]
+@test pop2.data == [0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0]
 
-popm = Population(2, 4, 2)
+# merge, split, sample, reset!
+pop = merge(pop1, pop2)
+@test length(pop) == 5
+@test size(pop) == [2, 3]
+@test nloci(pop) == 2
+@test ploidy(pop) == 2
+
+pop = Population([2, 2], 2, 2)
 core = BasicData()
-initialize!(core, [Autosome, XChromosome, YChromosome, Mitochondrion], (popm, Male))
-@test popm.data == [1, 2, 3, 0, 0, 4, 0, 0, 5, 6, 7, 0, 0, 8, 0, 0]
+initialize!(core, [Autosome, Autosome], pop, Female)
+pops = split(pop)
+@test length(pops[1]) == 2
+@test size(pops[1]) == [2]
+@test size(pops[2]) == [2]
+@test pops[1].data == [1:8;]
+@test pops[2].data == [9:16;]
 
-data = Array{Int}(8)
-listgenes!(data, 1, popf)
-@test data[1:4] == [1, 2, 6, 7]
-listgenes!(data, 2, popf)
-@test data[1:4] == [3, 4, 8, 9]
-listgenes!(data, 4, popf)
-@test data[1:2] == [5, 10]
-listgenes!(data, 1, popm)
-@test data[1:4] == [1, 2, 5, 6]
-listgenes!(data, 2, popm)
-@test data[1:2] == [3, 7]
-listgenes!(data, 3, popm)
-@test data[1:2] == [4, 8]
-listgenes!(data, 1, (popf, Female), (popm, Male))
-@test data[1:8] == [1, 2, 6, 7, 1, 2, 5, 6]
-listgenes!(data, 2, (popf, Female), (popm, Male))
-@test data[1:6] == [3, 4, 8, 9, 3, 7]
-listgenes!(data, 3, (popf, Female), (popm, Male))
-@test data[1:2] == [4, 8]
-listgenes!(data, 4, (popf, Female), (popm, Male))
-@test data[1:2] == [5, 10]
+pop2 = sample([1, 3], pop)
+@test length(pop2) == 2
+@test nloci(pop2) == 2
+@test ploidy(pop2) == 2
+@test offset(pop2) == [0]
+@test pop2.data == [1, 2, 3, 4, 9, 10, 11, 12]
+
+reset!(pop)
+@test length(pop) == 4
+@test offset(pop) == [0]
+@test nloci(pop) == 2
+@test ploidy(pop) == 2
+
+# postsims.jl

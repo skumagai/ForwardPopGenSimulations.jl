@@ -4,7 +4,9 @@ export Population,
        nloci,
        ploidy,
        offset,
-       listgenes!
+       listgenes!,
+       sample,
+       reset!
 
 
 immutable Population
@@ -57,24 +59,23 @@ function Base.setindex!(pop::Population, val::Int, orgid::Int, locus::Int, chr::
 end
 
 # default version to initialize populations.
-function initialize!(core, chrtypes::Vector{ChromosomeType}, pops::Tuple{Population, SexType}...)
-    for (pop, sex) in pops
-        pp = length(pop)
-        nl = nloci(pop)
-        pl = ploidy(pop)
-        for org = 1:pp, loc = 1:nl, chr = 1:pl
-            pop[org, loc, chr] = initgenotype!(core, Val{sex}, Val{chr}, Val{chrtypes[loc]})
-        end
+function initialize!(core, chrtypes::Vector{ChromosomeType}, pop::Population, sex::SexType)
+    length(chrtypes) == nloci(pop) || error("dimension mismatch: number of loci.")
+    pp = length(pop)
+    nl = nloci(pop)
+    pl = ploidy(pop)
+    for org = 1:pp, loc = 1:nl, chr = 1:pl
+        pop[org, loc, chr] = initgenotype!(core, Val{sex}, Val{chr}, Val{chrtypes[loc]})
     end
     nothing
 end
 
 # When simulating a population of asexual diploids, all organisms are females. Moreover,
 # all simulated loci are autosomal.
-initialize!(core, pop::Population) = initialize!(core, fill(Autosome, nloci(pop)), (pop, Female))
+initialize!(core, pop::Population) = initialize!(core, fill(Autosome, nloci(pop)), pop, Female)
 
 # default case
-initgenotype!(core, locus, chr, ctype) = 0
+initgenotype!(core, sex, chr, ctype) = 0
 # specific case; all cases perform identical.s
 initgenotype!(core, sex, chr, ::Type{Val{Autosome}}) =
     insert!(db(core), GeneRecord(0, nextstate!(core)))
@@ -87,14 +88,14 @@ initgenotype!(core, ::Type{Val{Male}}, ::Type{Val{2}}, ::Type{Val{YChromosome}})
 initgenotype!(core, ::Type{Val{Female}}, ::Type{Val{1}}, ::Type{Val{Mitochondrion}}) =
     insert!(db(core), GeneRecord(0, nextstate!(core)))
 
-function reinitialize!(oldcore, pops::Tuple{Population, SexType}...)
+function reinitialize!(oldcore, pops::Population...)
     oldgdb = db(oldcore)
     core = BasicData()
     gdb = db(core)
     # Preemptively map 0 to 0 as this value has a special meaning.
     smap = Dict{Int, Int}(0 => 0)
     smax = 1
-    for (pop, _) in pops
+    for pop in pops
         for i in eachindex(pop)
             state = oldgdb[pop[i]].state
             if !haskey(smap, state)
@@ -108,11 +109,9 @@ function reinitialize!(oldcore, pops::Tuple{Population, SexType}...)
     core
 end
 
-reinitialize!(oldcore, pop::Population) = reinitialize!(oldcore, (pop, Female))
-
-function listgenes!(gids::AbstractArray, locus, pops::Tuple{Population, SexType}...)
+function listgenes!(gids::AbstractArray, locus, pops::Population)
     gi = 1
-    for (pop, _) in pops
+    for pop in pops
         popsize = sum(size(pop))
         nchr = ploidy(pop)
         for org in 1:popsize, chr = 1:nchr
@@ -123,6 +122,69 @@ function listgenes!(gids::AbstractArray, locus, pops::Tuple{Population, SexType}
             end
         end
     end
+    nothing
 end
 
-listgenes!(gids::AbstractArray, locus, pop::Population) = listgenes!(gids, locus, (pop, Female))
+function Base.merge(pops::Population...)
+    # Merge two or more populations.
+    # When ploidy and number of loci do not coinside across populations, error and exit.
+
+    p = pops[1]
+    nl = nloci(p)
+    pl = ploidy(p)
+    psizes = Int[]
+    for p in pops
+        nl != nloci(p) || pl != ploidy(p) && error("can't merge incompatible populations.")
+        append!(psizes, size(p))
+    end
+    pnew = Population(psizes, nl, pl)
+    i = 1
+    for p in pops
+        for j in eachindex(p)
+            pnew[i] = p[j]
+            i += 1
+        end
+    end
+    pnew
+end
+
+function Base.split(pop::Population)
+    # Split a population by offsets, while retaining SexType exactly.
+    subn = size(pop)
+    ofs = offset(pop)
+    pops = Vector{Population}()
+    nl = nloci(pop)
+    pl = ploidy(pop)
+    for (s, o) in zip(subn, ofs)
+        pnew = Population(s, nl, pl)
+        for i in eachindex(pnew)
+            pnew[i] = pop[i + o]
+        end
+        push!(pops, pnew)
+    end
+    pops
+end
+
+function sample(inds::Vector{Int}, pop::Population)
+    # sample individuals from a population.
+    # This function doesn't respect population structures.
+    maximum(inds) <= length(pop) || error("not enough individuals in a population.")
+    nl = nloci(pop)
+    pl = ploidy(pop)
+    pnew = Population(length(inds), nl, pl)
+    i = 1
+    for org in inds, locus = 1:nl, chr = 1:pl
+        pnew[i] = pop[org, locus, chr]
+        i += 1
+    end
+    pnew
+end
+
+function reset!(pops::Population...)
+    # reset population structures without affecting members.
+    for pop in pops
+        empty!(pop.offset)
+        push!(pop.offset, 0)
+    end
+    nothing
+end
